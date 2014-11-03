@@ -605,5 +605,18 @@ std::string util::to_latex_string(const T& t)
     return to_string(t);
 }
 
+template<class Rep, class Period>
+std::ostream& operator<< (std::ostream &out, const std::chrono::duration<Rep, Period> &duration) {
+    auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+
+    if(millis >= 1000) {
+        out << (float)(millis) * 0.001f << "s";
+    } else {
+        out << millis << "ms";
+    }
+
+    return out;
+}
+
 }// end namespace sdsl
 #endif
