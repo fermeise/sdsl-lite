@@ -32,8 +32,8 @@ private:
     size_type                      m_delta;
     csa_type                       m_csa;
     bit_vector                     m_s;
-    sd_vector<>                    m_b;
     bp_support_sada<>              m_s_support;
+    sd_vector<>                    m_b;
     sd_vector<>::select_0_type     m_b_select0;
     sd_vector<>::select_1_type     m_b_select1;
     vlc_vector<>                   m_depth;
@@ -194,8 +194,8 @@ public:
         written_bytes += sizeof(m_delta);
         written_bytes += m_csa.serialize(out, child, "csa");
         written_bytes += m_s.serialize(out, child, "s");
-        written_bytes += m_b.serialize(out, child, "b");
         written_bytes += m_s_support.serialize(out, child, "s_support");
+        written_bytes += m_b.serialize(out, child, "b");
         written_bytes += m_b_select0.serialize(out, child, "b_select0");
         written_bytes += m_b_select1.serialize(out, child, "b_select1");
         written_bytes += m_depth.serialize(out, child, "depth");
@@ -210,8 +210,8 @@ public:
         in.read((char*) &m_delta, sizeof(m_delta));
         m_csa.load(in);
         m_s.load(in);
-        m_b.load(in);
         m_s_support.load(in, &m_s);
+        m_b.load(in);
         m_b_select0.load(in, &m_b);
         m_b_select1.load(in, &m_b);
         m_depth.load(in);
