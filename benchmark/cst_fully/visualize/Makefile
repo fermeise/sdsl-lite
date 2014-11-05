@@ -13,4 +13,4 @@ cst_fully.tex: ../results/all.txt ../../basic_functions.R cst_fully.R $(CONFIG_F
 	@R --vanilla < cst_fully.R > R.log 2>&1
 
 clean:
-	rm -f cst_fully.pdf cst_fully.aux cst_fully.log fig-space.log R.log LaTeX.log
+	rm -f cst_fully.pdf cst_fully.aux cst_fully.log fig-space.tex R.log LaTeX.log
