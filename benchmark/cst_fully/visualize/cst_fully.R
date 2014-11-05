@@ -25,7 +25,7 @@ for(i in 1:nrow(raw)) {
 	data<-raw[i,]
 
     header = paste(header, c(
-		tc_config[data[["TC_ID"]], "LATEX-NAME"]
+		tc_config[as.character(data[["TC_ID"]]), "LATEX-NAME"]
 	), sep=" & ")
 
 	table1 = paste(table1, c(
