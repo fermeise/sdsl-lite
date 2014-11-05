@@ -41,7 +41,8 @@ private:
     mutable std::vector<char_type> m_charBuffer; // Used for LCA-operation
 
 public:
-    const csa_type  &csa = m_csa;
+    const size_type   &delta = m_delta;
+    const csa_type    &csa = m_csa;
     const bit_vector  &s = m_s;
     const sd_vector<> &b = m_b;
 
@@ -592,6 +593,16 @@ public:
 
     char_type edge(node_type v, size_type d) const {
         return m_csa.text[m_csa[v.first] + d];
+    }
+
+//! Get the number of nodes in the sampled tree.
+        /*!
+         * \return The number of nodes in the sampled tree.
+         * \par Time complexity
+         *   \f$ \Order{1} \f$
+         */
+    size_type sampled_nodes() const {
+        return m_s.size() / 2;
     }
 };
 
