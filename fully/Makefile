@@ -7,7 +7,7 @@ HEADERS=$(wildcard $(INC_DIR)/sdsl/*.hpp)
 all: main.x
 
 run-test: build-test
-	./test_cst_fcst.x
+	./test_cst_fully.x
 
 build-test: test_cst_fully.x
 

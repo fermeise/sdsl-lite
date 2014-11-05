@@ -46,51 +46,56 @@ public:
     const bit_vector  &s = m_s;
     const sd_vector<> &b = m_b;
 
-    static cst_fully construct(const std::string &file, size_type delta) {
+    static cst_fully construct(const std::string &file, size_type delta, bool sample_leaves = false) {
         t_cst cst;
         sdsl::construct(cst, file, 1);
-        return cst_fully(cst, delta, false);
+        return cst_fully(cst, delta, false, sample_leaves);
     }
 
-    static cst_fully construct_im(const char *str, size_type delta) {
+    static cst_fully construct_im(const char *str, size_type delta, bool sample_leaves = false) {
         t_cst cst;
         sdsl::construct_im(cst, str, 1);
-        return cst_fully(cst, delta, false);
+        return cst_fully(cst, delta, false, sample_leaves);
     }
 
-    cst_fully(const t_cst &cst, size_type delta, bool verbose)
+    cst_fully(const t_cst &cst,
+              size_type delta,
+              bool verbose,
+              bool sample_leaves = false)
     : m_delta(delta),
       m_csa(cst.csa),
       m_charBuffer(delta)
     {
         size_type delta_half = delta / 2;
 
-        bit_vector sampledNode(cst.nodes(), false);
-        size_type sampleCount = 1;
-        sampledNode[cst.id(cst.root())] = true; // always sample root
+        bit_vector is_sampled(cst.nodes(), false);
+        size_type sample_count = 1;
+        is_sampled[cst.id(cst.root())] = true; // always sample root
 
         std::chrono::time_point<std::chrono::high_resolution_clock> start;
         if(verbose) {
             start = timer::now();
         }
 
-        for(auto it = csa_iterator_type::begin(cst.csa); it != csa_iterator_type::end(cst.csa); ++it) {
-            const size_type d = it.depth();
-            if(d + delta_half <= cst.size() and
-               d % delta_half == 0) {
-                const auto node = cst.select_leaf(*it + 1);
-                const size_type id = cst.id(node);
-                if(!sampledNode[id]) {
-                    sampledNode[id] = true;
-                    sampleCount++;
+        if(sample_leaves) {
+            for(auto it = csa_iterator_type::begin(cst.csa); it != csa_iterator_type::end(cst.csa); ++it) {
+                const size_type d = it.depth();
+                if(d + delta_half <= cst.size() and
+                   d % delta_half == 0) {
+                    const auto node = cst.select_leaf(*it + 1);
+                    const size_type id = cst.id(node);
+                    if(!is_sampled[id]) {
+                        is_sampled[id] = true;
+                        sample_count++;
+                    }
                 }
             }
-        }
 
-        if(verbose) {
-            auto stop = timer::now();
-            std::cout << "Scanning of leaves: " << (stop - start) << std::endl;
-            start = timer::now();
+            if(verbose) {
+                auto stop = timer::now();
+                std::cout << "Scanning of leaves: " << (stop - start) << std::endl;
+                start = timer::now();
+            }
         }
 
         for(auto it = cst.begin(); it != cst.end(); ++it) {
@@ -103,9 +108,9 @@ public:
                         v = cst.sl(v);
                     }
                     const size_type id = cst.id(v);
-                    if(!sampledNode[id]) {
-                        sampledNode[id] = true;
-                        sampleCount++;
+                    if(!is_sampled[id]) {
+                        is_sampled[id] = true;
+                        sample_count++;
                     }
                 }
             }
@@ -121,9 +126,9 @@ public:
         int_vector<64> tmp_depth;
         std::stack<bool> sampledStack;
 
-        m_s.resize(2 * sampleCount);
-        tmp_b.resize(2 * sampleCount + cst.size());
-        tmp_depth.resize(sampleCount);
+        m_s.resize(2 * sample_count);
+        tmp_b.resize(2 * sample_count + cst.size());
+        tmp_depth.resize(sample_count);
 
         size_type s_idx = 0;
         size_type b_idx = 0;
@@ -132,7 +137,7 @@ public:
         for(auto it = cst.begin(); it != cst.end(); ++it) {
             auto node = *it;
             if(cst.is_leaf(node)) {
-                if(sampledNode[cst.id(node)]) {
+                if(is_sampled[cst.id(node)]) {
                     m_s[s_idx++] = 1;
                     m_s[s_idx++] = 0;
                     tmp_b[b_idx++] = 1;
@@ -144,7 +149,7 @@ public:
                 }
             } else {
                 if(it.visit() == 1) {
-                    sampledStack.push(sampledNode[cst.id(node)]);
+                    sampledStack.push(is_sampled[cst.id(node)]);
                     if(sampledStack.top()) {
                         m_s[s_idx++] = 1;
                         tmp_b[b_idx++] = 1;
@@ -458,6 +463,9 @@ public:
     node_type sl(node_type v) const {
         if(v == root()) {
             return root();
+        } else if(is_leaf(v)) {
+            size_t leaf = m_csa.psi[v.first];
+            return node_type(leaf, leaf);
         }
 
         return lca(m_csa.psi[v.first], m_csa.psi[v.second]);

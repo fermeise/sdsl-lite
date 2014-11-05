@@ -7,8 +7,9 @@ using namespace sdsl;
 typedef cst_fully<> cst_type;
 
 TEST(FullyCompressedSuffixTreeTest, LsaLeafTest) {
-    cst_type fcst = cst_type::construct_im("abbbab", 4);
+    cst_type fcst = cst_type::construct_im("abbbab", 4, true);
 
+    // sampled tree should look like (0 1 2 (3) (4) 5 6)
     EXPECT_EQ(0, fcst.lsa_leaf(0));
     EXPECT_EQ(0, fcst.lsa_leaf(1));
     EXPECT_EQ(0, fcst.lsa_leaf(2));
@@ -19,7 +20,7 @@ TEST(FullyCompressedSuffixTreeTest, LsaLeafTest) {
 }
 
 TEST(FullyCompressedSuffixTreeTest, LsaLeafTest2) {
-    cst_type fcst = cst_type::construct_im("Mississippi", 4);
+    cst_type fcst = cst_type::construct_im("Mississippi", 4, true);
 
     // sampled tree should look like (0 1 (2) 3 (4) 5 6 (7) ((8) 9) 10 (11))
     EXPECT_EQ(0, fcst.lsa_leaf(0));
@@ -37,7 +38,7 @@ TEST(FullyCompressedSuffixTreeTest, LsaLeafTest2) {
 }
 
 TEST(FullyCompressedSuffixTreeTest, LsaLeafTest3) {
-    cst_type fcst = cst_type::construct_im("Mississippi", 2);
+    cst_type fcst = cst_type::construct_im("Mississippi", 2, true);
 
     // sampled tree should look like ((0)1((2)(3)(4)(5))(6)(7)((8)(9))((10)(11)))
     EXPECT_EQ(1, fcst.lsa_leaf(0));
@@ -54,8 +55,26 @@ TEST(FullyCompressedSuffixTreeTest, LsaLeafTest3) {
     EXPECT_EQ(26, fcst.lsa_leaf(11));
 }
 
+TEST(FullyCompressedSuffixTreeTest, LsaLeafTest4) {
+    cst_type fcst = cst_type::construct_im("Mississippi", 4);
+
+    // sampled tree should look like (0 1 2 3 4 5 6 7 (8 9) 10 11)
+    EXPECT_EQ(0, fcst.lsa_leaf(0));
+    EXPECT_EQ(0, fcst.lsa_leaf(1));
+    EXPECT_EQ(0, fcst.lsa_leaf(2));
+    EXPECT_EQ(0, fcst.lsa_leaf(3));
+    EXPECT_EQ(0, fcst.lsa_leaf(4));
+    EXPECT_EQ(0, fcst.lsa_leaf(5));
+    EXPECT_EQ(0, fcst.lsa_leaf(6));
+    EXPECT_EQ(0, fcst.lsa_leaf(7));
+    EXPECT_EQ(1, fcst.lsa_leaf(8));
+    EXPECT_EQ(1, fcst.lsa_leaf(9));
+    EXPECT_EQ(0, fcst.lsa_leaf(10));
+    EXPECT_EQ(0, fcst.lsa_leaf(11));
+}
+
 TEST(FullyCompressedSuffixTreeTest, SampledNodeTest) {
-    cst_type fcst = cst_type::construct_im("abbbab", 4);
+    cst_type fcst = cst_type::construct_im("abbbab", 4, true);
 
     EXPECT_EQ(cst_type::node_type(0, 6), fcst.sampled_node(0));
     EXPECT_EQ(cst_type::node_type(3, 3), fcst.sampled_node(1));
@@ -63,7 +82,7 @@ TEST(FullyCompressedSuffixTreeTest, SampledNodeTest) {
 }
 
 TEST(FullyCompressedSuffixTreeTest, SampledNodeTest2) {
-    cst_type fcst = cst_type::construct_im("Mississippi", 4);
+    cst_type fcst = cst_type::construct_im("Mississippi", 4, true);
 
     EXPECT_EQ(cst_type::node_type(0, 11), fcst.sampled_node(0));
     EXPECT_EQ(cst_type::node_type(2, 2), fcst.sampled_node(1));
@@ -73,16 +92,23 @@ TEST(FullyCompressedSuffixTreeTest, SampledNodeTest2) {
     EXPECT_EQ(cst_type::node_type(8, 8), fcst.sampled_node(8));
 }
 
+TEST(FullyCompressedSuffixTreeTest, SampledNodeTest3) {
+    cst_type fcst = cst_type::construct_im("Mississippi", 4);
+
+    EXPECT_EQ(cst_type::node_type(0, 11), fcst.sampled_node(0));
+    EXPECT_EQ(cst_type::node_type(8, 9), fcst.sampled_node(1));
+}
+
 TEST(FullyCompressedSuffixTreeTest, SampledDepthTest) {
-    cst_type fcst = cst_type::construct_im("abbbab", 4);
+    cst_type fcst = cst_type::construct_im("abbbab", 4, true);
 
     EXPECT_EQ(0, fcst.depth(0));
     EXPECT_EQ(2, fcst.depth(1));
     EXPECT_EQ(4, fcst.depth(3));
 }
 
-TEST(FullyCompressedSuffixTreeTest, DepthTest2) {
-    cst_type fcst = cst_type::construct_im("Mississippi", 4);
+TEST(FullyCompressedSuffixTreeTest, SampledDepthTest2) {
+    cst_type fcst = cst_type::construct_im("Mississippi", 4, true);
 
     EXPECT_EQ(0, fcst.depth(0));
     EXPECT_EQ(2, fcst.depth(1));
@@ -92,8 +118,15 @@ TEST(FullyCompressedSuffixTreeTest, DepthTest2) {
     EXPECT_EQ(6, fcst.depth(8));
 }
 
+TEST(FullyCompressedSuffixTreeTest, SampledDepthTest3) {
+    cst_type fcst = cst_type::construct_im("Mississippi", 4);
+
+    EXPECT_EQ(0, fcst.depth(0));
+    EXPECT_EQ(2, fcst.depth(1));
+}
+
 TEST(FullyCompressedSuffixTreeTest, LCSATest) {
-    cst_type fcst = cst_type::construct_im("abbbab", 4);
+    cst_type fcst = cst_type::construct_im("abbbab", 4, true);
 
     EXPECT_EQ(0, fcst.lcsa(0, 0));
     EXPECT_EQ(1, fcst.lcsa(1, 1));
@@ -104,7 +137,7 @@ TEST(FullyCompressedSuffixTreeTest, LCSATest) {
 }
 
 TEST(FullyCompressedSuffixTreeTest, LCSATest2) {
-    cst_type fcst = cst_type::construct_im("Mississippi", 4);
+    cst_type fcst = cst_type::construct_im("Mississippi", 4, true);
 
     EXPECT_EQ(0, fcst.lcsa(0, 0));
     EXPECT_EQ(1, fcst.lcsa(1, 1));
@@ -122,11 +155,20 @@ TEST(FullyCompressedSuffixTreeTest, LCSATest2) {
 }
 
 TEST(FullyCompressedSuffixTreeTest, LCSATest3) {
-    cst_type fcst = cst_type::construct_im(" as far as I c as j as fai", 4);
+    cst_type fcst = cst_type::construct_im(" as far as I c as j as fai", 4, true);
 
     // sampled tree should look like (01(2)(3)4567(8)(9)(10)11(12)131415(16)(17)((18)19)(20)2122((23)((24)25)26))
     EXPECT_EQ(fcst.lcsa(fcst.lsa_leaf(23), fcst.lsa_leaf(24)),
               fcst.lcsa(fcst.lcsa(fcst.lsa_leaf(23), fcst.lsa_leaf(24)), fcst.lsa_leaf(24)));
+}
+
+TEST(FullyCompressedSuffixTreeTest, LCSATest4) {
+    cst_type fcst = cst_type::construct_im("Mississippi", 4);
+
+    EXPECT_EQ(0, fcst.lcsa(0, 0));
+    EXPECT_EQ(0, fcst.lcsa(0, 1));
+    EXPECT_EQ(0, fcst.lcsa(1, 0));
+    EXPECT_EQ(1, fcst.lcsa(1, 1));
 }
 
 TEST(FullyCompressedSuffixTreeTest, DepthTest) {
@@ -207,12 +249,26 @@ TEST(FullyCompressedSuffixTreeTest, LCATest2) {
 TEST(FullyCompressedSuffixTreeTest, SuffixLinkTest) {
     cst_type fcst = cst_type::construct_im("Mississippi", 4);
 
-    EXPECT_EQ(cst_type::node_type(10, 11), fcst.sl(cst_type::node_type( 4,  5)));
+    EXPECT_EQ(cst_type::node_type( 5,  5), fcst.sl(cst_type::node_type( 1,  1)));
+    EXPECT_EQ(cst_type::node_type(11, 11), fcst.sl(cst_type::node_type( 5,  5)));
+    EXPECT_EQ(cst_type::node_type( 9,  9), fcst.sl(cst_type::node_type(11, 11)));
+    EXPECT_EQ(cst_type::node_type( 4,  4), fcst.sl(cst_type::node_type( 9,  9)));
+    EXPECT_EQ(cst_type::node_type(10, 10), fcst.sl(cst_type::node_type( 4,  4)));
+    EXPECT_EQ(cst_type::node_type( 8,  8), fcst.sl(cst_type::node_type(10, 10)));
+    EXPECT_EQ(cst_type::node_type( 3,  3), fcst.sl(cst_type::node_type( 8,  8)));
+    EXPECT_EQ(cst_type::node_type( 7,  7), fcst.sl(cst_type::node_type( 3,  3)));
+    EXPECT_EQ(cst_type::node_type( 6,  6), fcst.sl(cst_type::node_type( 7,  7)));
+    EXPECT_EQ(cst_type::node_type( 2,  2), fcst.sl(cst_type::node_type( 6,  6)));
+    EXPECT_EQ(cst_type::node_type( 0,  0), fcst.sl(cst_type::node_type( 2,  2)));
+    EXPECT_EQ(cst_type::node_type( 1,  1), fcst.sl(cst_type::node_type( 0,  0)));
+
+    EXPECT_EQ(cst_type::node_type( 0, 11), fcst.sl(cst_type::node_type( 0, 11)));
     EXPECT_EQ(cst_type::node_type( 0, 11), fcst.sl(cst_type::node_type( 2,  5)));
+    EXPECT_EQ(cst_type::node_type(10, 11), fcst.sl(cst_type::node_type( 4,  5)));
     EXPECT_EQ(cst_type::node_type( 0, 11), fcst.sl(cst_type::node_type( 6,  7)));
+    EXPECT_EQ(cst_type::node_type( 0, 11), fcst.sl(cst_type::node_type( 8, 11)));
     EXPECT_EQ(cst_type::node_type( 2,  5), fcst.sl(cst_type::node_type( 8,  9)));
     EXPECT_EQ(cst_type::node_type( 8,  9), fcst.sl(cst_type::node_type(10, 11)));
-    EXPECT_EQ(cst_type::node_type( 0, 11), fcst.sl(cst_type::node_type( 8, 11)));
 }
 
 TEST(FullyCompressedSuffixTreeTest, ParentTest) {
@@ -231,13 +287,13 @@ TEST(FullyCompressedSuffixTreeTest, ParentTest) {
     EXPECT_EQ(cst_type::node_type(10, 11), fcst.parent(cst_type::node_type(10, 10)));
     EXPECT_EQ(cst_type::node_type(10, 11), fcst.parent(cst_type::node_type(11, 11)));
 
-    EXPECT_EQ(cst_type::node_type( 2,  5), fcst.parent(cst_type::node_type( 4,  5)));
-    EXPECT_EQ(cst_type::node_type( 0, 11), fcst.parent(cst_type::node_type( 2,  5)));
-    EXPECT_EQ(cst_type::node_type( 0, 11), fcst.parent(cst_type::node_type( 6,  7)));
-    EXPECT_EQ(cst_type::node_type( 8, 11), fcst.parent(cst_type::node_type( 8,  9)));
-    EXPECT_EQ(cst_type::node_type( 8, 11), fcst.parent(cst_type::node_type(10, 11)));
-    EXPECT_EQ(cst_type::node_type( 0, 11), fcst.parent(cst_type::node_type( 8, 11)));
     EXPECT_EQ(cst_type::node_type( 0, 11), fcst.parent(cst_type::node_type( 0, 11)));
+    EXPECT_EQ(cst_type::node_type( 0, 11), fcst.parent(cst_type::node_type( 2,  5)));
+    EXPECT_EQ(cst_type::node_type( 2,  5), fcst.parent(cst_type::node_type( 4,  5)));
+    EXPECT_EQ(cst_type::node_type( 0, 11), fcst.parent(cst_type::node_type( 6,  7)));
+    EXPECT_EQ(cst_type::node_type( 8, 11), fcst.parent(cst_type::node_type(10, 11)));
+    EXPECT_EQ(cst_type::node_type( 8, 11), fcst.parent(cst_type::node_type( 8,  9)));
+    EXPECT_EQ(cst_type::node_type( 0, 11), fcst.parent(cst_type::node_type( 8, 11)));
 }
 
 TEST(FullyCompressedSuffixTreeTest, ChildTest) {
@@ -260,9 +316,9 @@ TEST(FullyCompressedSuffixTreeTest, ChildTest) {
     EXPECT_EQ(cst_type::node_type(10, 10), fcst.child(cst_type::node_type(10, 11), 'p'));
     EXPECT_EQ(cst_type::node_type(11, 11), fcst.child(cst_type::node_type(10, 11), 's'));
 
-    EXPECT_EQ(fcst.root(),                   fcst.child(cst_type::node_type( 2,  5), 'i'));
-    EXPECT_EQ(fcst.root(),                   fcst.child(cst_type::node_type( 6,  7), 's'));
-    EXPECT_EQ(fcst.root(),                   fcst.child(cst_type::node_type( 8, 11), 'p'));
+    EXPECT_EQ(fcst.root(),                 fcst.child(cst_type::node_type( 2,  5), 'i'));
+    EXPECT_EQ(fcst.root(),                 fcst.child(cst_type::node_type( 6,  7), 's'));
+    EXPECT_EQ(fcst.root(),                 fcst.child(cst_type::node_type( 8, 11), 'p'));
 }
 
 TEST(FullyCompressedSuffixTreeTest, SelectChildTest) {
@@ -273,26 +329,26 @@ TEST(FullyCompressedSuffixTreeTest, SelectChildTest) {
     EXPECT_EQ(cst_type::node_type( 2,  5), fcst.select_child(cst_type::node_type( 0, 11), 3));
     EXPECT_EQ(cst_type::node_type( 6,  7), fcst.select_child(cst_type::node_type( 0, 11), 4));
     EXPECT_EQ(cst_type::node_type( 8, 11), fcst.select_child(cst_type::node_type( 0, 11), 5));
-    EXPECT_EQ(fcst.root(),                   fcst.select_child(cst_type::node_type( 0, 11), 6));
+    EXPECT_EQ(fcst.root(),                 fcst.select_child(cst_type::node_type( 0, 11), 6));
     EXPECT_EQ(cst_type::node_type( 2,  2), fcst.select_child(cst_type::node_type( 2,  5), 1));
     EXPECT_EQ(cst_type::node_type( 3,  3), fcst.select_child(cst_type::node_type( 2,  5), 2));
     EXPECT_EQ(cst_type::node_type( 4,  5), fcst.select_child(cst_type::node_type( 2,  5), 3));
-    EXPECT_EQ(fcst.root(),                   fcst.select_child(cst_type::node_type( 2,  5), 4));
+    EXPECT_EQ(fcst.root(),                 fcst.select_child(cst_type::node_type( 2,  5), 4));
     EXPECT_EQ(cst_type::node_type( 4,  4), fcst.select_child(cst_type::node_type( 4,  5), 1));
     EXPECT_EQ(cst_type::node_type( 5,  5), fcst.select_child(cst_type::node_type( 4,  5), 2));
-    EXPECT_EQ(fcst.root(),                   fcst.select_child(cst_type::node_type( 4,  5), 3));
+    EXPECT_EQ(fcst.root(),                 fcst.select_child(cst_type::node_type( 4,  5), 3));
     EXPECT_EQ(cst_type::node_type( 6,  6), fcst.select_child(cst_type::node_type( 6,  7), 1));
     EXPECT_EQ(cst_type::node_type( 7,  7), fcst.select_child(cst_type::node_type( 6,  7), 2));
-    EXPECT_EQ(fcst.root(),                   fcst.select_child(cst_type::node_type( 6,  7), 3));
+    EXPECT_EQ(fcst.root(),                 fcst.select_child(cst_type::node_type( 6,  7), 3));
     EXPECT_EQ(cst_type::node_type( 8,  9), fcst.select_child(cst_type::node_type( 8, 11), 1));
     EXPECT_EQ(cst_type::node_type(10, 11), fcst.select_child(cst_type::node_type( 8, 11), 2));
-    EXPECT_EQ(fcst.root(),                   fcst.select_child(cst_type::node_type( 8, 11), 3));
+    EXPECT_EQ(fcst.root(),                 fcst.select_child(cst_type::node_type( 8, 11), 3));
     EXPECT_EQ(cst_type::node_type( 8,  8), fcst.select_child(cst_type::node_type( 8,  9), 1));
     EXPECT_EQ(cst_type::node_type( 9,  9), fcst.select_child(cst_type::node_type( 8,  9), 2));
-    EXPECT_EQ(fcst.root(),                   fcst.select_child(cst_type::node_type( 8,  9), 3));
+    EXPECT_EQ(fcst.root(),                 fcst.select_child(cst_type::node_type( 8,  9), 3));
     EXPECT_EQ(cst_type::node_type(10, 10), fcst.select_child(cst_type::node_type(10, 11), 1));
     EXPECT_EQ(cst_type::node_type(11, 11), fcst.select_child(cst_type::node_type(10, 11), 2));
-    EXPECT_EQ(fcst.root(),                   fcst.select_child(cst_type::node_type(10, 11), 3));
+    EXPECT_EQ(fcst.root(),                 fcst.select_child(cst_type::node_type(10, 11), 3));
 }
 
 TEST(FullyCompressedSuffixTreeTest, SiblingTest) {
@@ -303,19 +359,19 @@ TEST(FullyCompressedSuffixTreeTest, SiblingTest) {
     EXPECT_EQ(cst_type::node_type( 6,  7), fcst.sibling(cst_type::node_type( 2,  5)));
     EXPECT_EQ(cst_type::node_type( 3,  3), fcst.sibling(cst_type::node_type( 2,  2)));
     EXPECT_EQ(cst_type::node_type( 4,  5), fcst.sibling(cst_type::node_type( 3,  3)));
-    EXPECT_EQ(fcst.root(),                   fcst.sibling(cst_type::node_type( 4,  5)));
+    EXPECT_EQ(fcst.root(),                 fcst.sibling(cst_type::node_type( 4,  5)));
     EXPECT_EQ(cst_type::node_type( 5,  5), fcst.sibling(cst_type::node_type( 4,  4)));
-    EXPECT_EQ(fcst.root()                  , fcst.sibling(cst_type::node_type( 5,  5)));
+    EXPECT_EQ(fcst.root()                , fcst.sibling(cst_type::node_type( 5,  5)));
     EXPECT_EQ(cst_type::node_type( 8, 11), fcst.sibling(cst_type::node_type( 6,  7)));
     EXPECT_EQ(cst_type::node_type( 7,  7), fcst.sibling(cst_type::node_type( 6,  6)));
-    EXPECT_EQ(fcst.root(),                   fcst.sibling(cst_type::node_type( 7,  7)));
-    EXPECT_EQ(fcst.root(),                   fcst.sibling(cst_type::node_type( 8, 11)));
+    EXPECT_EQ(fcst.root(),                 fcst.sibling(cst_type::node_type( 7,  7)));
+    EXPECT_EQ(fcst.root(),                 fcst.sibling(cst_type::node_type( 8, 11)));
     EXPECT_EQ(cst_type::node_type(10, 11), fcst.sibling(cst_type::node_type( 8,  9)));
     EXPECT_EQ(cst_type::node_type( 9,  9), fcst.sibling(cst_type::node_type( 8,  8)));
-    EXPECT_EQ(fcst.root(),                   fcst.sibling(cst_type::node_type( 9,  9)));
-    EXPECT_EQ(fcst.root(),                   fcst.sibling(cst_type::node_type(10, 11)));
+    EXPECT_EQ(fcst.root(),                 fcst.sibling(cst_type::node_type( 9,  9)));
+    EXPECT_EQ(fcst.root(),                 fcst.sibling(cst_type::node_type(10, 11)));
     EXPECT_EQ(cst_type::node_type(11, 11), fcst.sibling(cst_type::node_type(10, 10)));
-    EXPECT_EQ(fcst.root(),                   fcst.sibling(cst_type::node_type(11, 11)));
+    EXPECT_EQ(fcst.root(),                 fcst.sibling(cst_type::node_type(11, 11)));
 }
 
 TEST(FullyCompressedSuffixTreeTest, EdgeTest) {
