@@ -426,19 +426,27 @@ TEST(FullyCompressedSuffixTreeTest, IteratorTest) {
     for(int delta = 2; delta <= 40; delta++) {
         cst_type fcst(cst, delta, false);
 
-        auto cstIt = cst.begin();
         auto it = fcst.begin();
+        auto cst_it = cst.begin();
 
-        while(it != fcst.end() && cstIt != cst.end()) {
+        while(it != fcst.end() && cst_it != cst.end()) {
             auto node = *it;
-            auto cstNode = *cstIt;
+            auto sl = fcst.sl(node);
+            auto parent = fcst.parent(node);
+            auto cst_node = *cst_it;
+            auto cst_ls = cst.sl(cst_node);
+            auto cst_parent = cst.parent(cst_node);
 
-            EXPECT_EQ(cst.lb(cstNode), fcst.lb(node));
-            EXPECT_EQ(cst.rb(cstNode), fcst.rb(node));
-            EXPECT_EQ(cst.depth(cstNode), fcst.depth(node));
+            EXPECT_EQ(cst.lb(cst_node), fcst.lb(node));
+            EXPECT_EQ(cst.rb(cst_node), fcst.rb(node));
+            EXPECT_EQ(cst.depth(cst_node), fcst.depth(node));
+            EXPECT_EQ(cst.lb(cst_ls), fcst.lb(sl));
+            EXPECT_EQ(cst.rb(cst_ls), fcst.rb(sl));
+            EXPECT_EQ(cst.lb(cst_parent), fcst.lb(parent));
+            EXPECT_EQ(cst.rb(cst_parent), fcst.rb(parent));
 
             ++it;
-            ++cstIt;
+            ++cst_it;
         }
     }
 }
