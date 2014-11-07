@@ -8,7 +8,8 @@ using timer = std::chrono::high_resolution_clock;
 
 typedef cst_fully<cst_sada<csa_wt<wt_huff<rrr_vector<63> >, 32, 32, text_order_sa_sampling<>, text_order_isa_sampling_support<>>, lcp_wt<> > > cst_type;
 
-const size_t BURST_SIZE = 10000;
+const size_t BURST_SIZE = 1000;
+const size_t NUM_BURSTS = 10;
 
 std::default_random_engine &get_generator() {
     static std::default_random_engine generator(std::chrono::system_clock::now().time_since_epoch().count());
@@ -178,16 +179,21 @@ void run_benchmark(std::string cst_name, const t_cst &cst) {
             std::string sampler_name = sampler.first;
             node_sampler<t_cst> *sampler_object = sampler.second;
 
-            sampler_object->reset();
+            unsigned long long nanos = 0;
 
-            auto nodes = sampler_object->get_burst(BURST_SIZE);
+            for(int i = 0; i < NUM_BURSTS; i++) {
+                sampler_object->reset();
+                auto nodes = sampler_object->get_burst(BURST_SIZE);
 
-            auto start = timer::now();
-            op_function(cst, nodes);
-            auto stop = timer::now();
+                auto start = timer::now();
+                op_function(cst, nodes);
+                auto stop = timer::now();
+
+                nanos += duration_cast<nanoseconds>(stop-start).count();
+            }
 
             std::cout << "# " << cst_name << "_" << op_name << "_" << sampler_name << "_TIME = "
-                      << duration_cast<nanoseconds>(stop-start).count() / BURST_SIZE << std::endl;
+                      << nanos / BURST_SIZE / NUM_BURSTS << std::endl;
         }
     }
 }

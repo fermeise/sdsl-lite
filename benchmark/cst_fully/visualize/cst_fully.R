@@ -2,7 +2,10 @@ source("../../basic_functions.R")
 
 tc_config <- readConfig("../test_case.config", c("TC_ID","PATH","LATEX-NAME","URL"))
 
-operations = c("SLINK", "CHILD", "DEPTH", "PARENT")
+operations = data.frame(id=c("SLINK", "CHILD", "DEPTH", "PARENT"),
+						caption=c("SLink", "Child", "SDepth", "Parent"))
+rownames(operations)<-operations[["OP_ID"]]
+colnames(operations)<-c("OP_ID", "LATEX-NAME")
 
 raw <- data_frame_from_key_value_pairs("../results/all.txt")
 
@@ -75,9 +78,10 @@ cat(header, "\\hline", sep="\\\\\n")
 
 format_string = "%.1e"
 
-for(op in operations) {
+for(op_idx in 1:nrow(operations)) {
+	op_name = as.character(operations[op_idx, "OP_ID"])
 	table = c(
-		paste(op, " & F & u", sep="", collapse=""),
+		paste(as.character(operations[op_idx, "LATEX-NAME"]), " & F & u", sep="", collapse=""),
 		" & F & su",
 		" & F & pu",
 		" & C & u",
@@ -87,17 +91,13 @@ for(op in operations) {
 	for(i in 1:nrow(raw)) {
 		data<-raw[i,]
 
-		header = paste(header, c(
-			tc_config[as.character(data[["TC_ID"]]), "LATEX-NAME"]
-		), sep=" & ")
-
 		table = paste(table, c(
-			sprintf(format_string, data[[paste("FCST_", op, "_U_TIME", sep="", collapse="")]] / 1000000000),
-			sprintf(format_string, data[[paste("FCST_", op, "_SU_TIME", sep="", collapse="")]] / 1000000000),
-			sprintf(format_string, data[[paste("FCST_", op, "_PU_TIME", sep="", collapse="")]] / 1000000000),
-			sprintf(format_string, data[[paste("CST_", op, "_U_TIME", sep="", collapse="")]] / 1000000000),
-			sprintf(format_string, data[[paste("CST_", op, "_SU_TIME", sep="", collapse="")]] / 1000000000),
-			sprintf(format_string, data[[paste("CST_", op, "_PU_TIME", sep="", collapse="")]] / 1000000000)
+			sprintf(format_string, data[[paste("FCST_", op_name, "_U_TIME", sep="", collapse="")]] / 1000000000),
+			sprintf(format_string, data[[paste("FCST_", op_name, "_SU_TIME", sep="", collapse="")]] / 1000000000),
+			sprintf(format_string, data[[paste("FCST_", op_name, "_PU_TIME", sep="", collapse="")]] / 1000000000),
+			sprintf(format_string, data[[paste("CST_", op_name, "_U_TIME", sep="", collapse="")]] / 1000000000),
+			sprintf(format_string, data[[paste("CST_", op_name, "_SU_TIME", sep="", collapse="")]] / 1000000000),
+			sprintf(format_string, data[[paste("CST_", op_name, "_PU_TIME", sep="", collapse="")]] / 1000000000)
 		), sep=" & ")
 	}
 
