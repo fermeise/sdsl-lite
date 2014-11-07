@@ -569,6 +569,7 @@ public:
         if(is_leaf(v)) {
             return root();
         }
+        // TODO: Depth is unnecessarily calculated twice
         size_type d = depth(v);
         char_type c = m_csa.text[m_csa[v.first] + d];
         node_type res = child(v, c);
@@ -601,6 +602,10 @@ public:
 
     char_type edge(node_type v, size_type d) const {
         return m_csa.text[m_csa[v.first] + d];
+    }
+
+    size_type size() const {
+        return m_csa.size();
     }
 
 //! Get the number of nodes in the sampled tree.

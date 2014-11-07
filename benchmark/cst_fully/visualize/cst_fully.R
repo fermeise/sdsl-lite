@@ -2,6 +2,8 @@ source("../../basic_functions.R")
 
 tc_config <- readConfig("../test_case.config", c("TC_ID","PATH","LATEX-NAME","URL"))
 
+operations = c("SLINK", "CHILD", "DEPTH", "PARENT")
+
 raw <- data_frame_from_key_value_pairs("../results/all.txt")
 
 sink("fig-space.tex")
@@ -20,6 +22,9 @@ table2 = c(
     "FCST (MB)",
     "CST (MB)",
     "CSA (MB)")
+table3 = c(
+    "$CSA/FCST$",
+    "$CSA/CST$")
 
 for(i in 1:nrow(raw)) {
 	data<-raw[i,]
@@ -41,11 +46,64 @@ for(i in 1:nrow(raw)) {
         sprintf("%.2f", data[["CST_SIZE"]] / (1024 * 1024)),
         sprintf("%.2f", data[["CSA_SIZE"]] / (1024 * 1024))
 	), sep=" & ")
+
+	table3 = paste(table3, c(
+        sprintf("%.3f", data[["CSA_SIZE"]] / data[["FCST_SIZE"]]),
+        sprintf("%.3f", data[["CSA_SIZE"]] / data[["CST_SIZE"]])
+	), sep=" & ")
 }
 
 cat(header, "\\hline", sep="\\\\\n")
 cat(table1, "\\hline", sep="\\\\\n")
 cat(table2, "\\hline", sep="\\\\\n")
+cat(table3, "\\hline", sep="\\\\\n")
+cat("\\end{tabular}\n")
+
+sink("fig-time.tex")
+
+cat("\\begin{tabular}{llr|*{", nrow(raw), "}{r}}\n", sep="")
+cat("\\hline\n")
+
+header = c("Operation & &")
+for(i in 1:nrow(raw)) {
+	data<-raw[i,]
+    header = paste(header, c(
+		tc_config[as.character(data[["TC_ID"]]), "LATEX-NAME"]
+	), sep=" & ")
+}
+cat(header, "\\hline", sep="\\\\\n")
+
+format_string = "%.1e"
+
+for(op in operations) {
+	table = c(
+		paste(op, " & F & u", sep="", collapse=""),
+		" & F & su",
+		" & F & pu",
+		" & C & u",
+		" & C & su",
+		" & C & pu")
+
+	for(i in 1:nrow(raw)) {
+		data<-raw[i,]
+
+		header = paste(header, c(
+			tc_config[as.character(data[["TC_ID"]]), "LATEX-NAME"]
+		), sep=" & ")
+
+		table = paste(table, c(
+			sprintf(format_string, data[[paste("FCST_", op, "_U_TIME", sep="", collapse="")]] / 1000000000),
+			sprintf(format_string, data[[paste("FCST_", op, "_SU_TIME", sep="", collapse="")]] / 1000000000),
+			sprintf(format_string, data[[paste("FCST_", op, "_PU_TIME", sep="", collapse="")]] / 1000000000),
+			sprintf(format_string, data[[paste("CST_", op, "_U_TIME", sep="", collapse="")]] / 1000000000),
+			sprintf(format_string, data[[paste("CST_", op, "_SU_TIME", sep="", collapse="")]] / 1000000000),
+			sprintf(format_string, data[[paste("CST_", op, "_PU_TIME", sep="", collapse="")]] / 1000000000)
+		), sep=" & ")
+	}
+
+	cat(table, "\\hline", sep="\\\\\n")
+}
+
 cat("\\end{tabular}\n")
 
 sink(NULL)
