@@ -13,17 +13,26 @@ using timer = std::chrono::high_resolution_clock;
 
 namespace sdsl {
 
-template<class t_cst = cst_sada<csa_wt<>, lcp_wt<> > >
+template<class t_csa = csa_wt<>,
+         class t_s_support = bp_support_sada<>,
+         class t_b = sd_vector<>,
+         class t_depth = dac_vector<>
+         >
 class cst_fully {
 public:
     typedef cst_dfs_const_forward_iterator<cst_fully> const_iterator;
-    typedef typename t_cst::csa_type::size_type       size_type;
-    typedef typename t_cst::csa_type                  csa_type;
-    typedef typename t_cst::char_type                 char_type;
+    typedef typename t_csa::size_type                 size_type;
+    typedef t_csa                                     csa_type;
+    typedef typename t_csa::char_type                 char_type;
     typedef std::pair<size_type, size_type>           node_type; // Nodes are represented by their left and right leafs (inclusive)
     typedef size_type                                 leaf_type; // Index of a leaf
     typedef size_type                                 sampled_node_type; // Node in the sampled tree represented by its index in s
-    typedef t_cst                                     construction_cst_type; // CST used for the construction of the FCST
+    typedef t_s_support                               s_support_type;
+    typedef t_b                                       b_type;
+    typedef typename t_b::select_0_type               b_select_0_type;
+    typedef typename t_b::select_1_type               b_select_1_type;
+    typedef t_depth                                   depth_type;
+    typedef cst_sada<t_csa, lcp_wt<> >                construction_cst_type; // CST used for the construction of the FCST
     typedef csa_iterator<csa_type>                    csa_iterator_type;
 
     typedef cst_tag                                   index_category;
@@ -32,11 +41,11 @@ private:
     size_type                      m_delta;
     csa_type                       m_csa;
     bit_vector                     m_s;
-    bp_support_sada<>              m_s_support;
-    sd_vector<>                    m_b;
-    sd_vector<>::select_0_type     m_b_select0;
-    sd_vector<>::select_1_type     m_b_select1;
-    vlc_vector<>                   m_depth;
+    s_support_type                 m_s_support;
+    b_type                         m_b;
+    b_select_0_type                m_b_select0;
+    b_select_1_type                m_b_select1;
+    depth_type                     m_depth;
 
     mutable std::vector<char_type> m_charBuffer; // Used for LCA-operation
 
@@ -47,18 +56,18 @@ public:
     const sd_vector<> &b = m_b;
 
     static cst_fully construct(const std::string &file, size_type delta, bool sample_leaves = false) {
-        t_cst cst;
+        construction_cst_type cst;
         sdsl::construct(cst, file, 1);
         return cst_fully(cst, delta, false, sample_leaves);
     }
 
     static cst_fully construct_im(const char *str, size_type delta, bool sample_leaves = false) {
-        t_cst cst;
+        construction_cst_type cst;
         sdsl::construct_im(cst, str, 1);
         return cst_fully(cst, delta, false, sample_leaves);
     }
 
-    cst_fully(const t_cst &cst,
+    cst_fully(const construction_cst_type &cst,
               size_type delta,
               bool verbose,
               bool sample_leaves = false)

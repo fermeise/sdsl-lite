@@ -6,7 +6,7 @@ using namespace sdsl;
 using namespace std::chrono;
 using timer = std::chrono::high_resolution_clock;
 
-typedef cst_fully<cst_sada<csa_wt<wt_huff<rrr_vector<63> >, 32, 32, text_order_sa_sampling<>, text_order_isa_sampling_support<>>, lcp_wt<> > > cst_type;
+typedef cst_fully<csa_wt<wt_huff<rrr_vector<63> >, 32, 32, text_order_sa_sampling<>, text_order_isa_sampling_support<> > > cst_type;
 
 const size_t BURST_SIZE = 1000;
 const size_t NUM_BURSTS = 10;
