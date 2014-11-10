@@ -128,6 +128,19 @@ public:
 };
 
 template<class t_cst>
+void test_lca(const t_cst &cst, const std::vector<typename t_cst::node_type> &nodes,
+                                const std::vector<typename t_cst::node_type> &nodes2) {
+    auto it = nodes.begin();
+    auto it2 = nodes2.begin();
+
+    while(it != nodes.end()) {
+        cst.lca(*it, *it2);
+        ++it;
+        ++it2;
+    }
+}
+
+template<class t_cst>
 void test_slink(const t_cst &cst, const std::vector<typename t_cst::node_type> &nodes) {
     for(auto it = nodes.begin(); it != nodes.end(); ++it) {
         cst.sl(*it);
@@ -170,6 +183,36 @@ void run_benchmark(std::string cst_name, const t_cst &cst) {
     samplers.push_back(std::make_pair("U", &sampler_uniform));
     samplers.push_back(std::make_pair("SU", &sampler_sl));
     samplers.push_back(std::make_pair("PU", &sampler_parent));
+
+    for(auto sampler: samplers) {
+        std::string sampler_name = sampler.first;
+        node_sampler<t_cst> *sampler_object = sampler.second;
+
+        unsigned long long nanos = 0;
+
+        for(int i = 0; i < NUM_BURSTS; i++) {
+            sampler_object->reset();
+            auto nodes = sampler_object->get_burst(BURST_SIZE);
+
+            std::vector<typename t_cst::node_type> nodes2;
+            for(auto v: nodes) {
+                if(cst.rb(v) + 2 < cst.size()) {
+                    nodes2.push_back(cst.lca(cst.rb(v) + 1, cst.rb(v) + 2));
+                } else {
+                    nodes2.push_back(cst.root());
+                }
+            }
+
+            auto start = timer::now();
+            test_lca(cst, nodes, nodes2);
+            auto stop = timer::now();
+
+            nanos += duration_cast<nanoseconds>(stop-start).count();
+        }
+
+        std::cout << "# " << cst_name << "_LCA_" << sampler_name << "_TIME = "
+                  << nanos / BURST_SIZE / NUM_BURSTS << std::endl;
+    }
 
     for(auto op: operations) {
         std::string op_name = op.first;

@@ -2,8 +2,8 @@ source("../../basic_functions.R")
 
 tc_config <- readConfig("../test_case.config", c("TC_ID","PATH","LATEX-NAME","URL"))
 
-operations = data.frame(id=c("SLINK", "CHILD", "DEPTH", "PARENT"),
-						caption=c("SLink", "Child", "SDepth", "Parent"))
+operations = data.frame(id=c("LCA", "SLINK", "CHILD", "DEPTH", "PARENT"),
+						caption=c("LCA", "SLink", "Child", "SDepth", "Parent"))
 rownames(operations)<-operations[["OP_ID"]]
 colnames(operations)<-c("OP_ID", "LATEX-NAME")
 
