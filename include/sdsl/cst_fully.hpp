@@ -126,7 +126,7 @@ public:
         }
 
         if(verbose) {
-           auto stop = timer::now();
+            auto stop = timer::now();
             std::cout << "Scanning of inner nodes: " << (stop - start) << std::endl;
             start = timer::now();
         }
@@ -183,7 +183,7 @@ public:
         util::init_support(m_s_support, &m_s);
         util::init_support(m_b_select0, &m_b);
         util::init_support(m_b_select1, &m_b);
-        m_depth = vlc_vector<>(tmp_depth);
+        m_depth = depth_type(tmp_depth);
     }
 
     const_iterator begin() const {
@@ -254,6 +254,11 @@ public:
 //! Returns the rightmost leaf (right boundary) of a node.
     leaf_type rb(node_type v) const {
         return v.second;
+    }
+
+//! Returns true iff v is an ancestor of w.
+    bool ancestor(node_type v, node_type w) const {
+        return v.first <= w.first && v.second >= w.second;
     }
 
 //! Returns the index of the last bracket in S before the leaf with index l.
@@ -383,25 +388,11 @@ public:
          *   \f$ \Order( \delta \cdot ( 1 + t_{rank\_bwt} ) ) \f$
          */
     node_type lca(leaf_type l, leaf_type r) const {
-        size_type depth;
-        return lca(l, r, depth);
-    }
-
-//! Calculate the LCA of two leaves l and r.
-        /*!
-         * \param l The index of leaf l.
-         * \param r The index of leaf r. \f$ r > l \f$
-         * \param res_i The depth of the LCA (return value).
-         * \return The LCA of l and r.
-         * \par Time complexity
-         *   \f$ \Order( \delta \cdot ( 1 + t_{rank\_bwt} ) ) \f$
-         */
-    node_type lca(leaf_type l, leaf_type r, size_type &depth) const {
         assert(l<r);
 
         size_type i;
         sampled_node_type u;
-        depth = depth_lca(l, r, i, u);
+        depth_lca(l, r, i, u);
 
         node_type v = sampled_node(u);
         leaf_type lb = v.first;
@@ -491,18 +482,16 @@ public:
         const leaf_type l = v.first;
         const leaf_type r = v.second;
 
-        size_type left_depth = 0;
-        size_type right_depth = 0;
         node_type left_parent = root();
-        node_type right_parent;
+        node_type right_parent = root();
 
         if(l > 0) {
-            left_parent = lca(l-1, r, left_depth);
+            left_parent = lca(l-1, r);
         }
         if(r < m_csa.size() - 1) {
-            right_parent = lca(l, r+1, right_depth);
+            right_parent = lca(l, r+1);
         }
-        return (left_depth < right_depth) ? right_parent : left_parent;
+        return ancestor(right_parent, left_parent) ? left_parent : right_parent;
     }
 
 //! Get the child w of node v which edge label (v,w) starts with character c.
