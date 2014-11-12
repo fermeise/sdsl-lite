@@ -599,7 +599,7 @@ public:
     }
 
     char_type edge(node_type v, size_type d) const {
-        return m_csa.text[m_csa[v.first] + d];
+        return m_csa.text[m_csa[v.first] + d + 1];
     }
 
     size_type size() const {

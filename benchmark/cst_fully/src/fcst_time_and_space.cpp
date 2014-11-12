@@ -17,16 +17,7 @@ std::default_random_engine &get_generator() {
 }
 
 template<class t_cst>
-class node_sampler {
-public:
-    virtual ~node_sampler() {}
-
-    virtual void reset() = 0;
-    virtual std::vector<typename t_cst::node_type> get_burst(size_t sample_count) = 0;
-};
-
-template<class t_cst>
-class node_sampler_uniform : public node_sampler<t_cst> {
+class node_sampler_uniform {
 private:
     const t_cst &m_cst;
     std::uniform_int_distribution<typename t_cst::size_type> m_distribution;
@@ -54,7 +45,7 @@ public:
 };
 
 template<class t_cst>
-class node_sampler_iterate_sl : public node_sampler<t_cst> {
+class node_sampler_iterate_sl {
 private:
     const t_cst &m_cst;
     std::uniform_int_distribution<typename t_cst::size_type> m_distribution;
@@ -91,7 +82,7 @@ public:
 };
 
 template<class t_cst>
-class node_sampler_iterate_parent : public node_sampler<t_cst> {
+class node_sampler_iterate_parent {
 private:
     const t_cst &m_cst;
     std::uniform_int_distribution<typename t_cst::size_type> m_distribution;
@@ -128,117 +119,140 @@ public:
 };
 
 template<class t_cst>
-void test_lca(const t_cst &cst, const std::vector<typename t_cst::node_type> &nodes,
-                                const std::vector<typename t_cst::node_type> &nodes2) {
-    auto it = nodes.begin();
-    auto it2 = nodes2.begin();
-
-    while(it != nodes.end()) {
-        cst.lca(*it, *it2);
-        ++it;
-        ++it2;
+std::pair<typename t_cst::node_type, typename t_cst::node_type>
+lca_argument(const t_cst& cst, const typename t_cst::node_type v) {
+    typename t_cst::node_type w;
+    if(cst.rb(v) + 2 < cst.size()) {
+        w = cst.lca(cst.rb(v) + 1, cst.rb(v) + 2);
+    } else {
+        w = cst.root();
     }
+
+    return std::make_pair(v, w);
 }
 
 template<class t_cst>
-void test_slink(const t_cst &cst, const std::vector<typename t_cst::node_type> &nodes) {
-    for(auto it = nodes.begin(); it != nodes.end(); ++it) {
-        cst.sl(*it);
-    }
+void test_lca(const t_cst &cst, const std::pair<typename t_cst::node_type, typename t_cst::node_type> &arg) {
+    cst.lca(arg.first, arg.second);
 }
 
 template<class t_cst>
-void test_first_child(const t_cst &cst, const std::vector<typename t_cst::node_type> &nodes) {
-    for(auto it = nodes.begin(); it != nodes.end(); ++it) {
-        cst.select_child(*it, 1);
+std::pair<typename t_cst::node_type, typename t_cst::size_type>
+letter_argument(const t_cst& cst, const typename t_cst::node_type v) {
+    auto d = cst.depth(v);
+
+    if(d == 0) {
+        std::uniform_int_distribution<typename t_cst::size_type> distribution(0, cst.size() - 1);
+
+        auto c = cst.csa.F[distribution(get_generator())];
+
+        return std::make_pair(cst.child(v, c), 1);
     }
+
+    return std::make_pair(v, d);
 }
 
 template<class t_cst>
-void test_depth(const t_cst &cst, const std::vector<typename t_cst::node_type> &nodes) {
-    for(auto it = nodes.begin(); it != nodes.end(); ++it) {
-        cst.depth(*it);
-    }
+void test_letter(const t_cst &cst, const std::pair<typename t_cst::node_type, typename t_cst::size_type> &arg) {
+    cst.edge(arg.first, arg.second);
 }
+
 template<class t_cst>
-void test_parent(const t_cst &cst, const std::vector<typename t_cst::node_type> &nodes) {
-    for(auto it = nodes.begin(); it != nodes.end(); ++it) {
-        cst.parent(*it);
+typename t_cst::node_type slink_argument(const t_cst&, const typename t_cst::node_type v) {
+    return v;
+}
+
+template<class t_cst>
+void test_slink(const t_cst &cst, const typename t_cst::node_type &v) {
+    cst.sl(v);
+}
+
+template<class t_cst>
+std::pair<typename t_cst::node_type, typename t_cst::char_type>
+child_argument(const t_cst &cst, const typename t_cst::node_type v) {
+    std::uniform_int_distribution<typename t_cst::size_type> distribution(cst.lb(v), cst.rb(v));
+
+    auto d = cst.depth(v);
+    auto c = cst.csa.text[cst.csa[distribution(get_generator())] + d];
+
+    return std::make_pair(v, c);
+}
+
+template<class t_cst>
+void test_child(const t_cst &cst, const std::pair<typename t_cst::node_type, typename t_cst::char_type> &arg) {
+    cst.child(arg.first, arg.second);
+}
+
+template<class t_cst>
+typename t_cst::node_type depth_argument(const t_cst&, const typename t_cst::node_type v) {
+    return v;
+}
+
+template<class t_cst>
+void test_depth(const t_cst &cst, const typename t_cst::node_type &v) {
+    cst.depth(v);
+}
+
+template<class t_cst>
+typename t_cst::node_type parent_argument(const t_cst&, const typename t_cst::node_type v) {
+    return v;
+}
+
+template<class t_cst>
+void test_parent(const t_cst &cst, const typename t_cst::node_type &v) {
+    cst.parent(v);
+}
+
+template<class t_cst,
+         class t_test_func,
+         class t_prepare_func>
+void run_benchmark(const std::string &cst_name, const t_cst &cst,
+                   const std::string &op_name, t_test_func test_func, t_prepare_func prepare_func) {
+    run_benchmark(cst_name, cst, op_name, test_func, prepare_func, "U", node_sampler_uniform<t_cst>(cst));
+    run_benchmark(cst_name, cst, op_name, test_func, prepare_func, "SU", node_sampler_iterate_sl<t_cst>(cst));
+    run_benchmark(cst_name, cst, op_name, test_func, prepare_func, "PU", node_sampler_iterate_parent<t_cst>(cst));
+}
+
+template<class t_cst,
+         class t_test_func,
+         class t_prepare_func,
+         class t_sampler>
+void run_benchmark(const std::string cst_name, const t_cst &cst,
+                   const std::string op_name, t_test_func test_func, t_prepare_func prepare_func,
+                   const std::string sampler_name, t_sampler sampler) {
+    unsigned long long nanos = 0;
+
+    for(int i = 0; i < NUM_BURSTS; i++) {
+        auto nodes = sampler.get_burst(BURST_SIZE);
+
+        std::vector<decltype(prepare_func(cst, cst.root()))> args;
+        args.reserve(nodes.size());
+
+        for(auto v: nodes) {
+            args.push_back(prepare_func(cst, v));
+        }
+
+        auto start = timer::now();
+        for(auto arg: args) {
+            test_func(cst, arg);
+        }
+        auto stop = timer::now();
+
+        nanos += duration_cast<nanoseconds>(stop-start).count();
     }
+
+    std::cout << "# " << cst_name << "_" << op_name << "_" << sampler_name
+              << "_TIME = " << nanos / BURST_SIZE / NUM_BURSTS << std::endl;
 }
 
 template<class t_cst>
 void run_benchmark(std::string cst_name, const t_cst &cst) {
-    std::vector<std::pair<std::string, std::function<void(const t_cst&, const std::vector<typename t_cst::node_type> &)> > > operations;
-    operations.push_back(std::make_pair("SLINK", test_slink<t_cst>));
-    operations.push_back(std::make_pair("CHILD", test_first_child<t_cst>));
-    operations.push_back(std::make_pair("DEPTH", test_depth<t_cst>));
-    operations.push_back(std::make_pair("PARENT", test_parent<t_cst>));
-
-    node_sampler_uniform<t_cst> sampler_uniform(cst);
-    node_sampler_iterate_sl<t_cst> sampler_sl(cst);
-    node_sampler_iterate_parent<t_cst> sampler_parent(cst);
-
-    std::vector<std::pair<std::string, node_sampler<t_cst>* > > samplers;
-    samplers.push_back(std::make_pair("U", &sampler_uniform));
-    samplers.push_back(std::make_pair("SU", &sampler_sl));
-    samplers.push_back(std::make_pair("PU", &sampler_parent));
-
-    for(auto sampler: samplers) {
-        std::string sampler_name = sampler.first;
-        node_sampler<t_cst> *sampler_object = sampler.second;
-
-        unsigned long long nanos = 0;
-
-        for(int i = 0; i < NUM_BURSTS; i++) {
-            sampler_object->reset();
-            auto nodes = sampler_object->get_burst(BURST_SIZE);
-
-            std::vector<typename t_cst::node_type> nodes2;
-            for(auto v: nodes) {
-                if(cst.rb(v) + 2 < cst.size()) {
-                    nodes2.push_back(cst.lca(cst.rb(v) + 1, cst.rb(v) + 2));
-                } else {
-                    nodes2.push_back(cst.root());
-                }
-            }
-
-            auto start = timer::now();
-            test_lca(cst, nodes, nodes2);
-            auto stop = timer::now();
-
-            nanos += duration_cast<nanoseconds>(stop-start).count();
-        }
-
-        std::cout << "# " << cst_name << "_LCA_" << sampler_name << "_TIME = "
-                  << nanos / BURST_SIZE / NUM_BURSTS << std::endl;
-    }
-
-    for(auto op: operations) {
-        std::string op_name = op.first;
-        auto op_function = op.second;
-
-        for(auto sampler: samplers) {
-            std::string sampler_name = sampler.first;
-            node_sampler<t_cst> *sampler_object = sampler.second;
-
-            unsigned long long nanos = 0;
-
-            for(int i = 0; i < NUM_BURSTS; i++) {
-                sampler_object->reset();
-                auto nodes = sampler_object->get_burst(BURST_SIZE);
-
-                auto start = timer::now();
-                op_function(cst, nodes);
-                auto stop = timer::now();
-
-                nanos += duration_cast<nanoseconds>(stop-start).count();
-            }
-
-            std::cout << "# " << cst_name << "_" << op_name << "_" << sampler_name << "_TIME = "
-                      << nanos / BURST_SIZE / NUM_BURSTS << std::endl;
-        }
-    }
+    run_benchmark(cst_name, cst, "LCA", test_lca<t_cst>, lca_argument<t_cst>);
+    run_benchmark(cst_name, cst, "LETTER", test_letter<t_cst>, letter_argument<t_cst>);
+    run_benchmark(cst_name, cst, "SLINK", test_slink<t_cst>, slink_argument<t_cst>);
+    run_benchmark(cst_name, cst, "CHILD", test_child<t_cst>, child_argument<t_cst>);
+    run_benchmark(cst_name, cst, "DEPTH", test_depth<t_cst>, depth_argument<t_cst>);
+    run_benchmark(cst_name, cst, "PARENT", test_parent<t_cst>, parent_argument<t_cst>);
 }
 
 // Returns ceil(log(n))
