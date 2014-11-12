@@ -377,22 +377,22 @@ TEST(FullyCompressedSuffixTreeTest, SiblingTest) {
 TEST(FullyCompressedSuffixTreeTest, EdgeTest) {
     cst_type fcst = cst_type::construct_im("Mississippi", 4);
 
-    EXPECT_EQ('i', fcst.edge(cst_type::node_type( 2,  5), 0));
-    EXPECT_EQ('p', fcst.edge(cst_type::node_type( 6,  7), 0));
-    EXPECT_EQ('s', fcst.edge(cst_type::node_type( 8, 11), 0));
-    EXPECT_EQ('s', fcst.edge(cst_type::node_type( 8,  9), 0));
-    EXPECT_EQ('i', fcst.edge(cst_type::node_type( 8,  9), 1));
-    EXPECT_EQ('s', fcst.edge(cst_type::node_type(10, 11), 0));
+    EXPECT_EQ('i', fcst.edge(cst_type::node_type( 2,  5), 1));
+    EXPECT_EQ('p', fcst.edge(cst_type::node_type( 6,  7), 1));
+    EXPECT_EQ('s', fcst.edge(cst_type::node_type( 8, 11), 1));
+    EXPECT_EQ('s', fcst.edge(cst_type::node_type( 8,  9), 1));
+    EXPECT_EQ('i', fcst.edge(cst_type::node_type( 8,  9), 2));
     EXPECT_EQ('s', fcst.edge(cst_type::node_type(10, 11), 1));
-    EXPECT_EQ('i', fcst.edge(cst_type::node_type(10, 11), 2));
+    EXPECT_EQ('s', fcst.edge(cst_type::node_type(10, 11), 2));
+    EXPECT_EQ('i', fcst.edge(cst_type::node_type(10, 11), 3));
 
-    EXPECT_EQ('\0', fcst.edge(cst_type::node_type( 0,  0), 0));
-    EXPECT_EQ('M', fcst.edge(cst_type::node_type( 1,  1), 0));
-    EXPECT_EQ('i', fcst.edge(cst_type::node_type( 1,  1), 1));
-    EXPECT_EQ('s', fcst.edge(cst_type::node_type( 1,  1), 2));
-    EXPECT_EQ('p', fcst.edge(cst_type::node_type( 1,  1), 9));
-    EXPECT_EQ('i', fcst.edge(cst_type::node_type( 1,  1), 10));
-    EXPECT_EQ('\0', fcst.edge(cst_type::node_type( 1,  1), 11));
+    EXPECT_EQ('\0', fcst.edge(cst_type::node_type( 0,  0), 1));
+    EXPECT_EQ('M', fcst.edge(cst_type::node_type( 1,  1), 1));
+    EXPECT_EQ('i', fcst.edge(cst_type::node_type( 1,  1), 2));
+    EXPECT_EQ('s', fcst.edge(cst_type::node_type( 1,  1), 3));
+    EXPECT_EQ('p', fcst.edge(cst_type::node_type( 1,  1), 10));
+    EXPECT_EQ('i', fcst.edge(cst_type::node_type( 1,  1), 11));
+    EXPECT_EQ('\0', fcst.edge(cst_type::node_type( 1,  1), 12));
 }
 
 const char road_not_taken[] = "TWO roads diverged in a yellow wood,\
