@@ -1,11 +1,10 @@
 
-#ifndef INCLUDED_SDSL_CST_FULLY
-#define INCLUDED_SDSL_CST_FULLY
+#ifndef INCLUDED_SDSL_CST_FULLY_SDS
+#define INCLUDED_SDSL_CST_FULLY_SDS
 
 #include "bit_vectors.hpp"
 #include "vectors.hpp"
 #include "bp_support.hpp"
-#include "csa_iterators.hpp"
 #include <fstream>
 #include <chrono>
 
@@ -16,26 +15,29 @@ namespace sdsl {
 template<class t_csa = csa_wt<>,
          class t_s_support = bp_support_sada<>,
          class t_b = sd_vector<>,
-         class t_depth = dac_vector<>
+         class t_depth = dac_vector<>,
+         class t_depth_mask = sd_vector<>
          >
-class cst_fully {
+class cst_fully_sds {
 public:
-    typedef cst_dfs_const_forward_iterator<cst_fully> const_iterator;
-    typedef typename t_csa::size_type                 size_type;
-    typedef t_csa                                     csa_type;
-    typedef typename t_csa::char_type                 char_type;
-    typedef std::pair<size_type, size_type>           node_type; // Nodes are represented by their left and right leafs (inclusive)
-    typedef size_type                                 leaf_type; // Index of a leaf
-    typedef size_type                                 sampled_node_type; // Node in the sampled tree represented by its index in s
-    typedef t_s_support                               s_support_type;
-    typedef t_b                                       b_type;
-    typedef typename t_b::select_0_type               b_select_0_type;
-    typedef typename t_b::select_1_type               b_select_1_type;
-    typedef t_depth                                   depth_type;
-    typedef cst_sada<t_csa, lcp_wt<> >                construction_cst_type; // CST used for the construction of the FCST
-    typedef csa_iterator<csa_type>                    csa_iterator_type;
+    typedef cst_dfs_const_forward_iterator<cst_fully_sds> const_iterator;
+    typedef typename t_csa::size_type                     size_type;
+    typedef t_csa                                         csa_type;
+    typedef typename t_csa::char_type                     char_type;
+    typedef std::pair<size_type, size_type>               node_type; // Nodes are represented by their left and right leafs (inclusive)
+    typedef size_type                                     leaf_type; // Index of a leaf
+    typedef size_type                                     sampled_node_type; // Node in the sampled tree represented by its index in s
+    typedef t_s_support                                   s_support_type;
+    typedef t_b                                           b_type;
+    typedef typename t_b::select_0_type                   b_select_0_type;
+    typedef typename t_b::select_1_type                   b_select_1_type;
+    typedef t_depth                                       depth_type;
+    typedef t_depth_mask                                  depth_mask_type;
+    typedef typename t_depth_mask::rank_1_type            depth_mask_rank_1_type;
+    typedef cst_sada<t_csa, lcp_wt<> >                    construction_cst_type; // CST used for the construction of the FCST
+    typedef csa_iterator<csa_type>                        csa_iterator_type;
 
-    typedef cst_tag                                   index_category;
+    typedef cst_tag                                       index_category;
 
 private:
     size_type                      m_delta;
@@ -46,8 +48,8 @@ private:
     b_select_0_type                m_b_select0;
     b_select_1_type                m_b_select1;
     depth_type                     m_depth;
-
-    mutable std::vector<char_type> m_charBuffer; // Used for LCA-operation
+    depth_mask_type                m_depth_mask;
+    depth_mask_rank_1_type         m_depth_mask_rank1;
 
 public:
     const size_type   &delta = m_delta;
@@ -55,56 +57,38 @@ public:
     const bit_vector  &s = m_s;
     const b_type      &b = m_b;
 
-    static cst_fully construct(const std::string &file, size_type delta, bool sample_leaves = false) {
+    static cst_fully_sds construct(const std::string &file, size_type delta) {
         construction_cst_type cst;
         sdsl::construct(cst, file, 1);
-        return cst_fully(cst, delta, false, sample_leaves);
+        return cst_fully_sds(cst, delta, false);
     }
 
-    static cst_fully construct_im(const char *str, size_type delta, bool sample_leaves = false) {
+    static cst_fully_sds construct_im(const char *str, size_type delta) {
         construction_cst_type cst;
         sdsl::construct_im(cst, str, 1);
-        return cst_fully(cst, delta, false, sample_leaves);
+        return cst_fully_sds(cst, delta, false);
     }
 
-    cst_fully(const construction_cst_type &cst,
-              size_type delta,
-              bool verbose,
-              bool sample_leaves = false)
+    cst_fully_sds(const construction_cst_type &cst,
+                  size_type delta,
+                  bool verbose)
     : m_delta(delta),
-      m_csa(cst.csa),
-      m_charBuffer(delta)
+      m_csa(cst.csa)
     {
         size_type delta_half = delta / 2;
 
         bit_vector is_sampled(cst.nodes(), false);
         size_type sample_count = 1;
-        is_sampled[cst.id(cst.root())] = true; // always sample root
+        bit_vector is_depth_sampled(cst.nodes(), false);
+        size_type depth_sample_count = 1;
+
+        // always sample root
+        is_sampled[cst.id(cst.root())] = true;
+        is_depth_sampled[cst.id(cst.root())] = true;
 
         std::chrono::time_point<std::chrono::high_resolution_clock> start;
         if(verbose) {
             start = timer::now();
-        }
-
-        if(sample_leaves) {
-            for(auto it = csa_iterator_type::begin(cst.csa); it != csa_iterator_type::end(cst.csa); ++it) {
-                const size_type d = it.depth();
-                if(d + delta_half <= cst.size() and
-                   d % delta_half == 0) {
-                    const auto node = cst.select_leaf(*it + 1);
-                    const size_type id = cst.id(node);
-                    if(!is_sampled[id]) {
-                        is_sampled[id] = true;
-                        sample_count++;
-                    }
-                }
-            }
-
-            if(verbose) {
-                auto stop = timer::now();
-                std::cout << "Scanning of leaves: " << (stop - start) << std::endl;
-                start = timer::now();
-            }
         }
 
         for(auto it = cst.begin(); it != cst.end(); ++it) {
@@ -122,6 +106,19 @@ public:
                         sample_count++;
                     }
                 }
+
+                const size_type l = level(d);
+                if(d > delta_half * l && d % (delta_half * l) == 0 && level(d - delta_half * l) == l) {
+                    auto v = node;
+                    for(size_type i = 0; i < delta_half * l; i++) {
+                        v = cst.sl(v);
+                    }
+                    const size_type id = cst.id(v);
+                    if(!is_depth_sampled[id]) {
+                        is_depth_sampled[id] = true;
+                        depth_sample_count++;
+                    }
+                }
             }
         }
 
@@ -133,36 +130,35 @@ public:
 
         bit_vector tmp_b;
         int_vector<64> tmp_depth;
+        bit_vector tmp_depth_mask;
         std::stack<bool> sampledStack;
 
         m_s.resize(2 * sample_count);
         tmp_b.resize(2 * sample_count + cst.size());
-        tmp_depth.resize(sample_count);
+        tmp_depth.resize(depth_sample_count);
+        tmp_depth_mask.resize(sample_count);
 
         size_type s_idx = 0;
         size_type b_idx = 0;
+        size_type depth_sample_idx = 0;
         size_type sample_idx = 0;
 
         for(auto it = cst.begin(); it != cst.end(); ++it) {
             auto node = *it;
             if(cst.is_leaf(node)) {
-                if(is_sampled[cst.id(node)]) {
-                    m_s[s_idx++] = 1;
-                    m_s[s_idx++] = 0;
-                    tmp_b[b_idx++] = 1;
-                    tmp_b[b_idx++] = 0;
-                    tmp_b[b_idx++] = 1;
-                    tmp_depth[sample_idx++] = cst.depth(node) / delta_half;
-                } else {
-                    tmp_b[b_idx++] = 0;
-                }
+                tmp_b[b_idx++] = 0;
             } else {
                 if(it.visit() == 1) {
                     sampledStack.push(is_sampled[cst.id(node)]);
                     if(sampledStack.top()) {
                         m_s[s_idx++] = 1;
                         tmp_b[b_idx++] = 1;
-                        tmp_depth[sample_idx++] = cst.depth(node) / delta_half;
+                        if(is_depth_sampled[cst.id(node)]) {
+                            tmp_depth[depth_sample_idx++] = cst.depth(node) / delta_half;
+                            tmp_depth_mask[sample_idx++] = 1;
+                        } else {
+                            tmp_depth_mask[sample_idx++] = 0;
+                        }
                     }
                 } else {
                     if(sampledStack.top()) {
@@ -184,6 +180,8 @@ public:
         util::init_support(m_b_select0, &m_b);
         util::init_support(m_b_select1, &m_b);
         m_depth = depth_type(tmp_depth);
+        m_depth_mask = depth_mask_type(tmp_depth_mask);
+        util::init_support(m_depth_mask_rank1, &m_depth_mask);
     }
 
     const_iterator begin() const {
@@ -213,6 +211,8 @@ public:
         written_bytes += m_b_select0.serialize(out, child, "b_select0");
         written_bytes += m_b_select1.serialize(out, child, "b_select1");
         written_bytes += m_depth.serialize(out, child, "depth");
+        written_bytes += m_depth_mask.serialize(out, child, "m_depth_mask");
+        written_bytes += m_depth_mask_rank1.serialize(out, child, "m_depth_mask_rank1");
         structure_tree::add_size(child, written_bytes);
         return written_bytes;
     }
@@ -229,6 +229,8 @@ public:
         m_b_select0.load(in, &m_b);
         m_b_select1.load(in, &m_b);
         m_depth.load(in);
+        m_depth_mask.load(in);
+        m_depth_mask_rank1.load(in, &m_depth_mask);
     }
 
 //! Returns the root of the suffix tree.
@@ -333,13 +335,35 @@ public:
          * \param u A sampled node u.
          * \return The depth of sampled node u.
          * \par Time complexity
-         *   \f$ \Order{1} \f$
+         *   \f$ \Order{\psi \cdot \delta \cdot SDepth(u)} \f$
          */
     size_type depth(sampled_node_type u) const {
         assert(m_s[u] == 1);
 
-        size_type idx = m_s_support.rank(u) - 1;
-        return m_depth[idx] * (m_delta / 2);
+        size_type d = 0;
+
+        while(u != sampled_root()) {
+            size_type idx = m_s_support.rank(u) - 1;
+
+            if(m_depth_mask[idx]) {
+                size_type sample_idx = m_depth_mask_rank1.rank(idx);
+                return d + m_depth[sample_idx] * (m_delta / 2);
+            }
+
+            leaf_type l;
+            leaf_type r;
+            std::tie(l, r) = sampled_node(u);
+
+            for(size_type i = 0; i < m_delta / 2; i++) {
+                l = m_csa.psi[l];
+                r = m_csa.psi[r];
+            }
+            d += m_delta / 2;
+
+            u = lcsa(lsa_leaf(l), lsa_leaf(r));
+        }
+
+        return d;
     }
 
 //! Returns the depth of a node v.
@@ -347,7 +371,7 @@ public:
          * \param v The node v.
          * \return The depth of node v.
          * \par Time complexity
-         *   \f$ \Order( \delta ) \f$ for inner nodes,
+         *   \f$ \Order( (\psi + LF) \delta \cdot SDepth(v) ) \f$ for inner nodes,
          *   \f$ \Order( \saaccess ) \f$ for leaves.
          */
     size_type depth(node_type v) const {
@@ -357,7 +381,8 @@ public:
 
         size_type i;
         sampled_node_type u;
-        return depth_lca(v.first, v.second, i, u);
+        lca(v.first, v.second, i, u);
+        return i + depth(u);
     }
 
 //! Calculate the LCA of two nodes v and w.
@@ -366,7 +391,7 @@ public:
          * \param w The node w.
          * \return The LCA of v and w.
          * \par Time complexity
-         *   \f$ \Order( \delta \cdot ( 1 + t_{rank\_bwt} ) ) \f$
+         *   \f$ \Order( (\psi + LF) \delta ) \f$
          */
     node_type lca(node_type v, node_type w) const {
         leaf_type l = std::min(v.first, w.first);
@@ -385,25 +410,14 @@ public:
          * \param r The index of leaf r. \f$ r > l \f$
          * \return The LCA of l and r.
          * \par Time complexity
-         *   \f$ \Order( \delta \cdot ( 1 + t_{rank\_bwt} ) ) \f$
+         *   \f$ \Order( (\psi + LF) \delta ) \f$
          */
     node_type lca(leaf_type l, leaf_type r) const {
         assert(l<r);
 
         size_type i;
         sampled_node_type u;
-        depth_lca(l, r, i, u);
-
-        node_type v = sampled_node(u);
-        leaf_type lb = v.first;
-        leaf_type rb = v.second;
-        char_type *c = m_charBuffer.data();
-
-        for(size_type k = 0; k < i; k++) {
-            backward_search(m_csa, lb, rb, c[i - k - 1], lb, rb);
-        }
-
-        return node_type(lb, rb);
+        return lca(l, r, i, u);
     }
 
 //! Calculate the depth of the LCA of two leaves l and r.
@@ -416,30 +430,23 @@ public:
          * \par Time complexity
          *   \f$ \Order( \delta ) \f$
          */
-    size_type depth_lca(leaf_type l, leaf_type r,
-                        size_type &res_i, sampled_node_type &res_u) const {
+    node_type lca(leaf_type l, leaf_type r,
+                  size_type &res_i, sampled_node_type &res_u) const {
         assert(l<r);
 
-        size_type max_d = 0;
-        size_type max_d_i = 0;
-        sampled_node_type max_d_node = 0;
+        size_type d = m_delta;
+        std::vector<sampled_node_type> w(m_delta, 0);
+        std::vector<char_type> c(m_delta, 0);
 
         for(size_type i = 0; i < m_delta; i++) {
-            sampled_node_type node = lcsa(lsa_leaf(l), lsa_leaf(r));
-            size_type d = i + depth(node);
+            w[i] = lcsa(lsa_leaf(l), lsa_leaf(r));
 
-            if(d > max_d) {
-                max_d = d;
-                max_d_i = i;
-                max_d_node = node;
-            }
-
-            char_type c = m_csa.F[l];
-            char_type comp = csa.char2comp[c];
-            m_charBuffer[i] = c;
+            c[i] = m_csa.F[l];
+            char_type comp = csa.char2comp[c[i]];
 
             // break if LCA of lb and rb is root
             if(l < m_csa.C[comp] || r >= m_csa.C[comp + 1]) {
+                d = i + 1;
                 break;
             }
 
@@ -447,10 +454,22 @@ public:
             r = m_csa.psi[r];
         }
 
-        res_i = max_d_i;
-        res_u = max_d_node;
+        std::tie(l, r) = sampled_node(w[d - 1]);
+        res_i = d - 1;
 
-        return max_d;
+        for(size_type k = 1; k < d; k++) {
+            size_type i = (d - k - 1);
+            node_type w_i = sampled_node(w[i]);
+            backward_search(m_csa, l, r, c[i], l, r);
+            if(l <= w_i.first && r >= w_i.second) {
+                std::tie(l, r) = w_i;
+                res_i = i;
+            }
+        }
+
+        res_u = w[res_i];
+
+        return node_type(l, r);
     }
 
 //! Compute the suffix link of a node v.
@@ -615,6 +634,15 @@ public:
     size_type sampled_nodes() const {
         return m_s.size() / 2;
     }
+
+    static size_type level(size_type n) {
+        size_type res = 1;
+        while(n > 1) {
+            n /= 2;
+            res++;
+        }
+        return res;
+    }
 };
 
 template<class t_csa,
@@ -622,8 +650,8 @@ template<class t_csa,
          class t_b,
          class t_depth
          >
-std::ostream& operator<< (std::ostream &out, const cst_fully<t_csa, t_s_support, t_b, t_depth> &cst) {
-    typedef typename cst_fully<t_csa, t_s_support, t_b, t_depth>::size_type size_type;
+std::ostream& operator<< (std::ostream &out, const cst_fully_sds<t_csa, t_s_support, t_b, t_depth> &cst) {
+    typedef typename cst_fully_sds<t_csa, t_s_support, t_b, t_depth>::size_type size_type;
 
     size_type leaf_idx = 0;
     size_type s_idx = 0;
@@ -641,4 +669,4 @@ std::ostream& operator<< (std::ostream &out, const cst_fully<t_csa, t_s_support,
 
 }// end namespace sdsl
 
-#endif // INCLUDED_SDSL_CST_FULLY
+#endif // INCLUDED_SDSL_CST_FULLY_SDS
