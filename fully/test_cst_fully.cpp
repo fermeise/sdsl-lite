@@ -523,6 +523,49 @@ TYPED_TEST(CstFullyBlackboxTest, IteratorTest) {
     }
 }
 
+std::string fib(int n) {
+    std::string a = "a";
+    std::string b = "b";
+
+    if(n == 0) return "";
+    if(n == 1) return a;
+
+    while(n > 2) {
+        a += b;
+        std::swap(a, b);
+        n--;
+    }
+
+    return b;
+}
+
+TYPED_TEST(CstFullyBlackboxTest, IteratorTest2) {
+    typedef TypeParam cst_type;
+
+    const std::string text = fib(20);
+
+    typename cst_type::construction_cst_type cst;
+    construct_im(cst, text.c_str(), 1);
+
+    cst_type fcst(cst, 4, false);
+
+    auto it = fcst.begin();
+    auto cst_it = cst.begin();
+
+    while(it != fcst.end() && cst_it != cst.end()) {
+        if(!fcst.is_leaf(*it)) {
+            auto node = *it;
+            auto cst_node = *cst_it;
+
+            EXPECT_EQ(cst.lb(cst_node), fcst.lb(node));
+            EXPECT_EQ(cst.rb(cst_node), fcst.rb(node));
+            EXPECT_EQ(cst.depth(cst_node), fcst.depth(node));
+        }
+        ++it;
+        ++cst_it;
+    }
+}
+
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();

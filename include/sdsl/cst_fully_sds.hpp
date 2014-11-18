@@ -340,20 +340,18 @@ public:
     size_type depth(sampled_node_type u) const {
         assert(m_s[u] == 1);
 
+        size_type idx = m_s_support.rank(u) - 1;
+        if(m_depth_mask[idx]) {
+            size_type sample_idx = m_depth_mask_rank1.rank(idx);
+            return m_depth[sample_idx] * (m_delta / 2);
+        }
+
         size_type d = 0;
+        leaf_type l;
+        leaf_type r;
+        std::tie(l, r) = sampled_node(u);
 
         while(u != sampled_root()) {
-            size_type idx = m_s_support.rank(u) - 1;
-
-            if(m_depth_mask[idx]) {
-                size_type sample_idx = m_depth_mask_rank1.rank(idx);
-                return d + m_depth[sample_idx] * (m_delta / 2);
-            }
-
-            leaf_type l;
-            leaf_type r;
-            std::tie(l, r) = sampled_node(u);
-
             for(size_type i = 0; i < m_delta / 2; i++) {
                 l = m_csa.psi[l];
                 r = m_csa.psi[r];
@@ -361,6 +359,12 @@ public:
             d += m_delta / 2;
 
             u = lcsa(lsa_leaf(l), lsa_leaf(r));
+
+            size_type idx = m_s_support.rank(u) - 1;
+            if(m_depth_mask[idx]) {
+                size_type sample_idx = m_depth_mask_rank1.rank(idx);
+                return d + m_depth[sample_idx] * (m_delta / 2);
+            }
         }
 
         return d;
@@ -618,6 +622,7 @@ public:
     }
 
     char_type edge(node_type v, size_type d) const {
+        assert(d >= 1 and d <= depth(v));
         return m_csa.text[m_csa[v.first] + d - 1];
     }
 

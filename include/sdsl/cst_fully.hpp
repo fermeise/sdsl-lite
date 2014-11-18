@@ -494,14 +494,6 @@ public:
         return ancestor(right_parent, left_parent) ? left_parent : right_parent;
     }
 
-//! Get the child w of node v which edge label (v,w) starts with character c.
-        /*!
-         * \param v A node v.
-         * \param c First character of the edge label from v to the desired child.
-         * \return The child node w which edge label (v,w) starts with c or root() if it does not exist.
-         * \par Time complexity
-         *       \f$ \Order{ \log n \cdot (\saaccess+\isaaccess) } \f$
-         */
     node_type child(node_type v, char_type c) const {
         if(is_leaf(v)) {
             return root();
@@ -509,6 +501,19 @@ public:
 
         size_type d = depth(v);
 
+        return child_3(v, c, d);
+    }
+
+//! Get the child w of node v which edge label (v,w) starts with character c.
+        /*!
+         * \param v A node v.
+         * \param c First character of the edge label from v to the desired child.
+         * \return The child node w which edge label (v,w) starts with c or root() if it does not exist.
+         * \par Time complexity
+         *       \f$ \Order{ \log m \cdot (\saaccess+\isaaccess) } \f$
+                 where \f$ m \f$ is the number of leaves under node v.
+         */
+    node_type child_1(node_type v, char_type c, size_type d) const {
         leaf_type res_lb;
         leaf_type res_rb;
 
@@ -548,6 +553,189 @@ public:
                     left = sample_pos + 1;
                 } else {
                     right = sample_pos - 1;
+                }
+            }
+
+            res_rb = left;
+        }
+
+        return node_type(res_lb, res_rb);
+    }
+
+//! Get the child w of node v which edge label (v,w) starts with character c.
+        /*!
+         * \param v A node v.
+         * \param c First character of the edge label from v to the desired child.
+         * \return The child node w which edge label (v,w) starts with c or root() if it does not exist.
+         * \par Time complexity
+         *       \f$ \Order{ m \cdot (\psiaccess + t_{rank\_bwt}) } \f$,
+                 where \f$ m \f$ is the number of leaves under node v.
+         */
+    node_type child_2(node_type v, char_type c, size_type d) const {
+        std::vector<char_type> label(d, 0);
+
+        leaf_type l = v.first;
+
+        for(size_type i = 0; i < d; i++) {
+            label[i] = m_csa.F[l];
+            l = m_csa.psi[l];
+        }
+
+        l = 0;
+        leaf_type r = size() - 1;
+
+        backward_search(m_csa, l, r, c, l, r);
+        for(size_type k = 0; k < d; k++) {
+            backward_search(m_csa, l, r, label[d - k - 1], l, r);
+        }
+
+        if(l > r) {
+            return root();
+        } else {
+            return node_type(l, r);
+        }
+    }
+
+//! Get the child w of node v which edge label (v,w) starts with character c.
+        /*!
+         * \param v A node v.
+         * \param c First character of the edge label from v to the desired child.
+         * \return The child node w which edge label (v,w) starts with c or root() if it does not exist.
+         * \par Time complexity
+         *       \f$ \Order{ \saaccess + \theta \cdot t_{rank\_bwt} + \log m + log \theta \cdot (\saaccess+\isaaccess) } \f$,
+                 where \f$ \theta \f$ is the SA and ISA sampling factor and \f$ m \f$ is the number of leaves under node v.
+         */
+    node_type child_3(node_type v, char_type c, size_type d) const {
+        // Assert that SA order SA sampling and text oder ISA sampling
+        // with the same sampling factor is used.
+
+        if(v == root()) {
+            leaf_type& l = v.first;
+            leaf_type& r = v.second;
+            backward_search(m_csa, l, r, c, l, r);
+            return v;
+        }
+
+        const size_type theta = std::min(d + 1, static_cast<size_type>(csa_type::sa_sample_dens));
+
+        std::vector<char_type> label(theta, 0);
+
+        leaf_type l = m_csa.isa[m_csa[v.first] + d - 1];
+        for(size_type i = 0; i < theta; i++) {
+            label[theta - i - 1] = m_csa.F[l];
+            l = m_csa.lf[l];
+        }
+
+        l = 0;
+        leaf_type r = size() - 1;
+
+        std::vector<node_type> D(theta, root());
+
+        backward_search(m_csa, l, r, c, l, r);
+        D[0] = node_type(l, r);
+        for(size_type i = 1; i < theta; i++) {
+            backward_search(m_csa, l, r, label[theta - i], l, r);
+            D[i] = node_type(l, r);
+        }
+
+        if(d < theta) {
+            std::tie(l, r) = D[d];
+            if(l > r) {
+                return root();
+            } else {
+                return node_type(l, r);
+            }
+        }
+
+        leaf_type res_lb;
+        leaf_type res_rb;
+
+        {
+            leaf_type left = v.first;
+            leaf_type right = v.second;
+
+            while(true) {
+                size_type ls = (left + theta - 1) / theta;
+                size_type rs = right / theta;
+
+                if(ls >= rs) {
+                    break;
+                }
+                size_type sample_pos = (ls + rs) / 2;
+                size_type text_pos = m_csa.sa_sample[sample_pos * theta];
+                size_type d2 = ((text_pos + d) / theta) * theta - text_pos;
+                leaf_type sample = m_csa.isa_sample[text_pos + d2];
+
+                if(sample >= D[d - d2].first) {
+                    if(sample <= D[d - d2].second) {
+                        right = sample_pos * theta;
+                    } else {
+                        right = sample_pos * theta - 1;
+                    }
+                } else {
+                    left = sample_pos * theta + 1;
+                }
+            }
+
+            while(left < right) {
+                leaf_type sample_pos = (left + right) / 2;
+                leaf_type sample = m_csa.isa[m_csa[sample_pos] + d];
+                if(sample >= D[0].first) {
+                    if(sample <= D[0].second) {
+                        right = sample_pos;
+                    } else {
+                        right = sample_pos - 1;
+                    }
+                } else {
+                    left = sample_pos + 1;
+                }
+            }
+
+            if(m_csa.text[m_csa[left] + d] != c) {
+                return root();
+            }
+
+            res_lb = left;
+        }
+
+        {
+            leaf_type left = v.first;
+            leaf_type right = v.second;
+
+            while(true) {
+                size_type ls = (left + theta - 1) / theta;
+                size_type rs = right / theta;
+
+                if(ls >= rs) {
+                    break;
+                }
+                size_type sample_pos = (ls + rs + 1) / 2;
+                size_type text_pos = m_csa.sa_sample[sample_pos * theta];
+                size_type d2 = ((text_pos + d) / theta) * theta - text_pos;
+                leaf_type sample = m_csa.isa_sample[text_pos + d2];
+
+                if(sample >= D[d - d2].first) {
+                    if(sample <= D[d - d2].second) {
+                        left = sample_pos * theta;
+                    } else {
+                        right = sample_pos * theta - 1;
+                    }
+                } else {
+                    left = sample_pos * theta + 1;
+                }
+            }
+
+            while(left < right) {
+                leaf_type sample_pos = (left + right + 1) / 2;
+                leaf_type sample = m_csa.isa[m_csa[sample_pos] + d];
+                if(sample >= D[0].first) {
+                    if(sample <= D[0].second) {
+                        left = sample_pos;
+                    } else {
+                        right = sample_pos - 1;
+                    }
+                } else {
+                    left = sample_pos + 1;
                 }
             }
 
@@ -599,6 +787,7 @@ public:
     }
 
     char_type edge(node_type v, size_type d) const {
+        assert(d >= 1 and d <= depth(v));
         return m_csa.text[m_csa[v.first] + d - 1];
     }
 

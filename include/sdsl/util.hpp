@@ -607,12 +607,16 @@ std::string util::to_latex_string(const T& t)
 
 template<class Rep, class Period>
 std::ostream& operator<< (std::ostream &out, const std::chrono::duration<Rep, Period> &duration) {
+    auto nanos = std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count();
+    auto micros = std::chrono::duration_cast<std::chrono::microseconds>(duration).count();
     auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
 
-    if(millis >= 1000) {
-        out << (float)(millis) * 0.001f << "s";
+    if(nanos < 10000) {
+        out << nanos << "ns";
+    } else if(micros < 100000) {
+        out << (float)(micros) * 0.001f << "ms";
     } else {
-        out << millis << "ms";
+        out << (float)(millis) * 0.001f << "s";
     }
 
     return out;
