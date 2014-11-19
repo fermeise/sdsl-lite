@@ -47,8 +47,6 @@ private:
     b_select_1_type                m_b_select1;
     depth_type                     m_depth;
 
-    mutable std::vector<char_type> m_charBuffer; // Used for LCA-operation
-
 public:
     const size_type   &delta = m_delta;
     const csa_type    &csa = m_csa;
@@ -72,8 +70,7 @@ public:
               bool verbose,
               bool sample_leaves = false)
     : m_delta(delta),
-      m_csa(cst.csa),
-      m_charBuffer(delta)
+      m_csa(cst.csa)
     {
         size_type delta_half = delta / 2;
 
@@ -357,7 +354,9 @@ public:
 
         size_type i;
         sampled_node_type u;
-        return depth_lca(v.first, v.second, i, u);
+        std::vector<char_type> c;
+        c.reserve(delta);
+        return depth_lca(v.first, v.second, i, u, c);
     }
 
 //! Calculate the LCA of two nodes v and w.
@@ -392,12 +391,12 @@ public:
 
         size_type i;
         sampled_node_type u;
-        depth_lca(l, r, i, u);
+        std::vector<char_type> c(delta, 0);
+        depth_lca(l, r, i, u, c);
 
         node_type v = sampled_node(u);
         leaf_type lb = v.first;
         leaf_type rb = v.second;
-        char_type *c = m_charBuffer.data();
 
         for(size_type k = 0; k < i; k++) {
             backward_search(m_csa, lb, rb, c[i - k - 1], lb, rb);
@@ -412,12 +411,13 @@ public:
          * \param r The index of leaf r. \f$ r > l \f$
          * \param res_i The index i for the ancestor used to determine the depth (return value).
          * \param res_u The ancestor used to determine the depth (return value).
+         * \param res_label The label from the found sampled node to the actual LCA.
          * \return The depth of the LCA of l and r.
          * \par Time complexity
          *   \f$ \Order( \delta ) \f$
          */
     size_type depth_lca(leaf_type l, leaf_type r,
-                        size_type &res_i, sampled_node_type &res_u) const {
+                        size_type &res_i, sampled_node_type &res_u, std::vector<char_type> &res_label) const {
         assert(l<r);
 
         size_type max_d = 0;
@@ -436,7 +436,7 @@ public:
 
             char_type c = m_csa.F[l];
             char_type comp = csa.char2comp[c];
-            m_charBuffer[i] = c;
+            res_label[i] = c;
 
             // break if LCA of lb and rb is root
             if(l < m_csa.C[comp] || r >= m_csa.C[comp + 1]) {
@@ -501,7 +501,7 @@ public:
 
         size_type d = depth(v);
 
-        return child_3(v, c, d);
+        return child_1(v, c, d);
     }
 
 //! Get the child w of node v which edge label (v,w) starts with character c.
