@@ -6,7 +6,7 @@ using namespace sdsl;
 using namespace std::chrono;
 using timer = std::chrono::high_resolution_clock;
 
-typedef cst_fully<csa_wt<wt_huff<rrr_vector<63> >, 32, 32, text_order_sa_sampling<>, text_order_isa_sampling_support<> > > cst_type;
+typedef CST_TYPE cst_type;
 
 const size_t BURST_SIZE = 1000;
 const size_t NUM_BURSTS = 10;
@@ -267,23 +267,19 @@ size_t log(size_t n) {
 }
 
 int main(int argc, char** argv) {
-    if(argc != 2) {
-        std::cout << "Syntax: " << argv[0] << " [input file]" << std::endl;
+    if(argc < 3) {
+        std::cout << "Usage: " << argv[0] << " [fcst_file] [cst_file]" << std::endl;
         return 1;
     }
 
-    const char* input_file = argv[1];
+    const char* fcst_file = argv[1];
+    const char* cst_file = argv[2];
 
-    auto start = timer::now();
-
+    cst_type fcst;
     cst_type::construction_cst_type cst;
-    construct(cst, input_file, 1);
 
-    const size_t n = cst.size();
-    const size_t delta = log(n) * log(log(n));
-    cst_type fcst(cst, delta, false);
-
-    auto stop = timer::now();
+    load_from_file(fcst, fcst_file);
+    load_from_file(cst, cst_file);
 
     std::cout << "# ALPHABET_SIZE = " << fcst.csa.sigma << std::endl;
     std::cout << "# DATA_SIZE = " << fcst.csa.text.size() << std::endl;
@@ -294,8 +290,6 @@ int main(int argc, char** argv) {
     std::cout << "# FCST_SIZE = " << size_in_bytes(fcst) << std::endl;
     std::cout << "# CST_SIZE = " << size_in_bytes(cst) << std::endl;
     std::cout << "# CSA_SIZE = " << size_in_bytes(fcst.csa) << std::endl;
-
-    std::cout << "# CONSTRUCTION_TIME = " << duration_cast<seconds>(stop-start).count() << std::endl;
 
     run_benchmark("FCST", fcst);
     run_benchmark("CST", cst);

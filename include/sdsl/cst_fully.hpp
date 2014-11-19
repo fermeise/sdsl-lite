@@ -7,9 +7,6 @@
 #include "bp_support.hpp"
 #include "csa_iterators.hpp"
 #include <fstream>
-#include <chrono>
-
-using timer = std::chrono::high_resolution_clock;
 
 namespace sdsl {
 
@@ -62,6 +59,8 @@ private:
         m_depth     = cst.m_depth;
     }
 
+    void build(const construction_cst_type &cst, size_type delta, bool sample_leaves);
+
 public:
     const size_type   &delta = m_delta;
     const csa_type    &csa = m_csa;
@@ -106,7 +105,10 @@ public:
             }
         }
 
-        cst_fully(cst, delta, sample_leaves);
+        build(cst, delta, sample_leaves);
+
+        m_delta = delta;
+        m_csa = std::move(cst.csa);
     }
 
 //! Construct CST from CST
@@ -114,104 +116,7 @@ public:
         : m_delta(delta),
           m_csa(cst.csa)
     {
-        size_type delta_half = delta / 2;
-
-        bit_vector is_sampled(cst.nodes(), false);
-        is_sampled[cst.id(cst.root())] = true; // always sample root
-        size_type sample_count = 1;
-
-        if(sample_leaves) {
-            auto event = memory_monitor::event("scan-leaves");
-            for(auto it = csa_iterator_type::begin(cst.csa); it != csa_iterator_type::end(cst.csa); ++it) {
-                const size_type d = it.depth();
-                if(d + delta_half <= cst.size() and
-                   d % delta_half == 0) {
-                    const auto node = cst.select_leaf(*it + 1);
-                    const size_type id = cst.id(node);
-                    if(!is_sampled[id]) {
-                        is_sampled[id] = true;
-                        sample_count++;
-                    }
-                }
-            }
-        }
-
-        {
-            auto event = memory_monitor::event("scan-nodes");
-            for(auto it = cst.begin(); it != cst.end(); ++it) {
-                if(it.visit() == 1 and cst.is_leaf(*it) == false) {
-                    const auto node = *it;
-                    const size_type d = cst.depth(node);
-                    if(d % delta_half == 0) {
-                        auto v = node;
-                        for(size_type i = 0; i < delta_half; i++) {
-                            v = cst.sl(v);
-                        }
-                        const size_type id = cst.id(v);
-                        if(!is_sampled[id]) {
-                            is_sampled[id] = true;
-                            sample_count++;
-                        }
-                    }
-                }
-            }
-        }
-
-        bit_vector tmp_b;
-        int_vector<64> tmp_depth;
-        std::stack<bool> sampledStack;
-
-        m_s.resize(2 * sample_count);
-        tmp_b.resize(2 * sample_count + cst.size());
-        tmp_depth.resize(sample_count);
-
-        {
-            auto event = memory_monitor::event("node-sampling");
-
-            size_type s_idx = 0;
-            size_type b_idx = 0;
-            size_type sample_idx = 0;
-
-            for(auto it = cst.begin(); it != cst.end(); ++it) {
-                auto node = *it;
-                if(cst.is_leaf(node)) {
-                    if(is_sampled[cst.id(node)]) {
-                        m_s[s_idx++] = 1;
-                        m_s[s_idx++] = 0;
-                        tmp_b[b_idx++] = 1;
-                        tmp_b[b_idx++] = 0;
-                        tmp_b[b_idx++] = 1;
-                        tmp_depth[sample_idx++] = cst.depth(node) / delta_half;
-                    } else {
-                        tmp_b[b_idx++] = 0;
-                    }
-                } else {
-                    if(it.visit() == 1) {
-                        sampledStack.push(is_sampled[cst.id(node)]);
-                        if(sampledStack.top()) {
-                            m_s[s_idx++] = 1;
-                            tmp_b[b_idx++] = 1;
-                            tmp_depth[sample_idx++] = cst.depth(node) / delta_half;
-                        }
-                    } else {
-                        if(sampledStack.top()) {
-                            m_s[s_idx++] = 0;
-                            tmp_b[b_idx++] = 1;
-                        }
-                        sampledStack.pop();
-                    }
-                }
-            }
-        }
-
-        {
-            auto event = memory_monitor::event("ss-depth");
-            util::init_support(m_s_support, &m_s);
-            m_b = b_type(tmp_b);
-            util::init_support(m_b_select0, &m_b);
-            util::init_support(m_b_select1, &m_b);
-            m_depth = depth_type(tmp_depth);
-        }
+        build(cst, delta, sample_leaves);
     }
 
     size_type size() const {
@@ -583,7 +488,13 @@ public:
 
         size_type d = depth(v);
 
-        return child_1(v, c, d);
+        if(64 * log(v.second + 1 - v.first) < (2 + log2(m_csa.sigma) * d)) {
+            return child_1(v, c, d);
+        } else {
+            return child_2(v, c, d);
+        }
+
+        //return child_1(v, c, d);
     }
 
 //! Get the child w of node v which edge label (v,w) starts with character c.
@@ -890,6 +801,108 @@ public:
         return res;
     }
 };
+
+template<class t_csa, class t_s_support, class t_b, class t_depth>
+void cst_fully<t_csa, t_s_support, t_b, t_depth>::build(const construction_cst_type &cst, size_type delta, bool sample_leaves) {
+    size_type delta_half = delta / 2;
+
+    bit_vector is_sampled(cst.nodes(), false);
+    is_sampled[cst.id(cst.root())] = true; // always sample root
+    size_type sample_count = 1;
+
+    if(sample_leaves) {
+        auto event = memory_monitor::event("scan-leaves");
+        for(auto it = csa_iterator_type::begin(cst.csa); it != csa_iterator_type::end(cst.csa); ++it) {
+            const size_type d = it.depth();
+            if(d + delta_half <= cst.size() and
+               d % delta_half == 0) {
+                const auto node = cst.select_leaf(*it + 1);
+                const size_type id = cst.id(node);
+                if(!is_sampled[id]) {
+                    is_sampled[id] = true;
+                    sample_count++;
+                }
+            }
+        }
+    }
+
+    {
+        auto event = memory_monitor::event("scan-nodes");
+        for(auto it = cst.begin(); it != cst.end(); ++it) {
+            if(it.visit() == 1 and cst.is_leaf(*it) == false) {
+                const auto node = *it;
+                const size_type d = cst.depth(node);
+                if(d % delta_half == 0) {
+                    auto v = node;
+                    for(size_type i = 0; i < delta_half; i++) {
+                        v = cst.sl(v);
+                    }
+                    const size_type id = cst.id(v);
+                    if(!is_sampled[id]) {
+                        is_sampled[id] = true;
+                        sample_count++;
+                    }
+                }
+            }
+        }
+    }
+
+    bit_vector tmp_b;
+    int_vector<64> tmp_depth;
+    std::stack<bool> sampledStack;
+
+    m_s.resize(2 * sample_count);
+    tmp_b.resize(2 * sample_count + cst.size());
+    tmp_depth.resize(sample_count);
+
+    {
+        auto event = memory_monitor::event("node-sampling");
+
+        size_type s_idx = 0;
+        size_type b_idx = 0;
+        size_type sample_idx = 0;
+
+        for(auto it = cst.begin(); it != cst.end(); ++it) {
+            auto node = *it;
+            if(cst.is_leaf(node)) {
+                if(is_sampled[cst.id(node)]) {
+                    m_s[s_idx++] = 1;
+                    m_s[s_idx++] = 0;
+                    tmp_b[b_idx++] = 1;
+                    tmp_b[b_idx++] = 0;
+                    tmp_b[b_idx++] = 1;
+                    tmp_depth[sample_idx++] = cst.depth(node) / delta_half;
+                } else {
+                    tmp_b[b_idx++] = 0;
+                }
+            } else {
+                if(it.visit() == 1) {
+                    sampledStack.push(is_sampled[cst.id(node)]);
+                    if(sampledStack.top()) {
+                        m_s[s_idx++] = 1;
+                        tmp_b[b_idx++] = 1;
+                        tmp_depth[sample_idx++] = cst.depth(node) / delta_half;
+                    }
+                } else {
+                    if(sampledStack.top()) {
+                        m_s[s_idx++] = 0;
+                        tmp_b[b_idx++] = 1;
+                    }
+                    sampledStack.pop();
+                }
+            }
+        }
+    }
+
+    {
+        auto event = memory_monitor::event("ss-depth");
+        util::init_support(m_s_support, &m_s);
+        m_b = b_type(tmp_b);
+        util::init_support(m_b_select0, &m_b);
+        util::init_support(m_b_select1, &m_b);
+        m_depth = depth_type(tmp_depth);
+    }
+}
 
 template<class t_csa,
          class t_s_support,
