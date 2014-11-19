@@ -4,6 +4,7 @@
 #include <chrono>
 
 using namespace sdsl;
+using namespace std::chrono;
 using timer = std::chrono::high_resolution_clock;
 
 typedef cst_fully<csa_wt<wt_huff<rrr_vector<63> >, 32, 32, text_order_sa_sampling<>, text_order_isa_sampling_support<> > > cst_type;
@@ -17,21 +18,26 @@ int main(int argc, char** argv) {
 
     const char* input_file = argv[1];
 
-    cst_type::construction_cst_type cst;
+    memory_monitor::start();
 
+    cst_type fcst;
     auto start = timer::now();
-    construct(cst, input_file, 1);
+    construct(fcst, input_file, 1);
     auto stop = timer::now();
-    std::cout << "Construction CST: " << (stop - start) << std::endl;
+    std::cout << "construction cst time in milliseconds: " << duration_cast<milliseconds>(stop-start).count() << std::endl;
 
-    start = timer::now();
-    cst_type fcst(cst, 100, true);
-    stop = timer::now();
-    std::cout << "Construction FCST: " << (stop - start) << std::endl;
+    memory_monitor::stop();
+
+    std::cout << "peak usage = " << memory_monitor::peak() / (1024*1024) << " MB" << std::endl;
+
+    std::ofstream cstofs("construction.html");
+    std::cout << "writing memory usage visualization to construction.html" << std::endl;
+    memory_monitor::write_memory_log<HTML_FORMAT>(cstofs);
+    cstofs.close();
 
     std::ofstream out_fcst("structure.html");
+    std::cout << "writing structure visualization to structure.html" << std::endl;
     write_structure<HTML_FORMAT>(fcst, out_fcst);
-    std::cout << "Output written to structure.html." << std::endl;
 
     return 0;
 }

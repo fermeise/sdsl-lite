@@ -33,8 +33,9 @@ public:
     typedef typename t_b::select_1_type               b_select_1_type;
     typedef t_depth                                   depth_type;
     typedef cst_sada<t_csa, lcp_wt<> >                construction_cst_type; // CST used for the construction of the FCST
-    typedef csa_iterator<csa_type>                    csa_iterator_type;
+    typedef csa_iterator<t_csa>                       csa_iterator_type;
 
+    typedef typename t_csa::alphabet_category         alphabet_category;
     typedef cst_tag                                   index_category;
 
 private:
@@ -47,6 +48,20 @@ private:
     b_select_1_type                m_b_select1;
     depth_type                     m_depth;
 
+    void copy(const cst_fully& cst) {
+        m_delta     = cst.m_delta;
+        m_csa       = cst.m_csa;
+        m_s         = cst.m_s;
+        m_s_support = cst.m_s_support;
+        m_s_support.set_vector(&m_s);
+        m_b         = cst.m_b;
+        m_b_select0 = cst.m_b_select0;
+        m_b_select0.set_vector(&m_b);
+        m_b_select1 = cst.m_b_select1;
+        m_b_select1.set_vector(&m_b);
+        m_depth     = cst.m_depth;
+    }
+
 public:
     const size_type   &delta = m_delta;
     const csa_type    &csa = m_csa;
@@ -56,34 +71,57 @@ public:
     static cst_fully construct(const std::string &file, size_type delta, bool sample_leaves = false) {
         construction_cst_type cst;
         sdsl::construct(cst, file, 1);
-        return cst_fully(cst, delta, false, sample_leaves);
+        return cst_fully(cst, delta, sample_leaves);
     }
 
     static cst_fully construct_im(const char *str, size_type delta, bool sample_leaves = false) {
         construction_cst_type cst;
         sdsl::construct_im(cst, str, 1);
-        return cst_fully(cst, delta, false, sample_leaves);
+        return cst_fully(cst, delta, sample_leaves);
     }
 
-    cst_fully(const construction_cst_type &cst,
-              size_type delta,
-              bool verbose,
-              bool sample_leaves = false)
-    : m_delta(delta),
-      m_csa(cst.csa)
+//! Default constructor
+    cst_fully() {}
+
+//! Copy constructor
+    cst_fully(const cst_fully &cst) {
+        copy(cst);
+    }
+
+//! Move constructor
+    cst_fully(cst_fully &&cst) {
+        *this = std::move(cst);
+    }
+
+//! Construct CST from file_map
+    cst_fully(cache_config &config, size_type delta = 0, bool sample_leaves = false) {
+        construction_cst_type cst(config);
+
+        if(delta == 0) {
+            const size_type n = cst.size();
+            if(n >= 3) {
+                delta = (log2(n-1)+1) * (log2(log2(n-1))+1);
+            } else {
+                delta = 2;
+            }
+        }
+
+        cst_fully(cst, delta, sample_leaves);
+    }
+
+//! Construct CST from CST
+    cst_fully(const construction_cst_type &cst, size_type delta, bool sample_leaves)
+        : m_delta(delta),
+          m_csa(cst.csa)
     {
         size_type delta_half = delta / 2;
 
         bit_vector is_sampled(cst.nodes(), false);
-        size_type sample_count = 1;
         is_sampled[cst.id(cst.root())] = true; // always sample root
-
-        std::chrono::time_point<std::chrono::high_resolution_clock> start;
-        if(verbose) {
-            start = timer::now();
-        }
+        size_type sample_count = 1;
 
         if(sample_leaves) {
+            auto event = memory_monitor::event("scan-leaves");
             for(auto it = csa_iterator_type::begin(cst.csa); it != csa_iterator_type::end(cst.csa); ++it) {
                 const size_type d = it.depth();
                 if(d + delta_half <= cst.size() and
@@ -96,36 +134,27 @@ public:
                     }
                 }
             }
-
-            if(verbose) {
-                auto stop = timer::now();
-                std::cout << "Scanning of leaves: " << (stop - start) << std::endl;
-                start = timer::now();
-            }
         }
 
-        for(auto it = cst.begin(); it != cst.end(); ++it) {
-            if(it.visit() == 1 and cst.is_leaf(*it) == false) {
-                const auto node = *it;
-                const size_type d = cst.depth(node);
-                if(d % delta_half == 0) {
-                    auto v = node;
-                    for(size_type i = 0; i < delta_half; i++) {
-                        v = cst.sl(v);
-                    }
-                    const size_type id = cst.id(v);
-                    if(!is_sampled[id]) {
-                        is_sampled[id] = true;
-                        sample_count++;
+        {
+            auto event = memory_monitor::event("scan-nodes");
+            for(auto it = cst.begin(); it != cst.end(); ++it) {
+                if(it.visit() == 1 and cst.is_leaf(*it) == false) {
+                    const auto node = *it;
+                    const size_type d = cst.depth(node);
+                    if(d % delta_half == 0) {
+                        auto v = node;
+                        for(size_type i = 0; i < delta_half; i++) {
+                            v = cst.sl(v);
+                        }
+                        const size_type id = cst.id(v);
+                        if(!is_sampled[id]) {
+                            is_sampled[id] = true;
+                            sample_count++;
+                        }
                     }
                 }
             }
-        }
-
-        if(verbose) {
-            auto stop = timer::now();
-            std::cout << "Scanning of inner nodes: " << (stop - start) << std::endl;
-            start = timer::now();
         }
 
         bit_vector tmp_b;
@@ -136,51 +165,78 @@ public:
         tmp_b.resize(2 * sample_count + cst.size());
         tmp_depth.resize(sample_count);
 
-        size_type s_idx = 0;
-        size_type b_idx = 0;
-        size_type sample_idx = 0;
+        {
+            auto event = memory_monitor::event("node-sampling");
 
-        for(auto it = cst.begin(); it != cst.end(); ++it) {
-            auto node = *it;
-            if(cst.is_leaf(node)) {
-                if(is_sampled[cst.id(node)]) {
-                    m_s[s_idx++] = 1;
-                    m_s[s_idx++] = 0;
-                    tmp_b[b_idx++] = 1;
-                    tmp_b[b_idx++] = 0;
-                    tmp_b[b_idx++] = 1;
-                    tmp_depth[sample_idx++] = cst.depth(node) / delta_half;
-                } else {
-                    tmp_b[b_idx++] = 0;
-                }
-            } else {
-                if(it.visit() == 1) {
-                    sampledStack.push(is_sampled[cst.id(node)]);
-                    if(sampledStack.top()) {
+            size_type s_idx = 0;
+            size_type b_idx = 0;
+            size_type sample_idx = 0;
+
+            for(auto it = cst.begin(); it != cst.end(); ++it) {
+                auto node = *it;
+                if(cst.is_leaf(node)) {
+                    if(is_sampled[cst.id(node)]) {
                         m_s[s_idx++] = 1;
-                        tmp_b[b_idx++] = 1;
-                        tmp_depth[sample_idx++] = cst.depth(node) / delta_half;
-                    }
-                } else {
-                    if(sampledStack.top()) {
                         m_s[s_idx++] = 0;
                         tmp_b[b_idx++] = 1;
+                        tmp_b[b_idx++] = 0;
+                        tmp_b[b_idx++] = 1;
+                        tmp_depth[sample_idx++] = cst.depth(node) / delta_half;
+                    } else {
+                        tmp_b[b_idx++] = 0;
                     }
-                    sampledStack.pop();
+                } else {
+                    if(it.visit() == 1) {
+                        sampledStack.push(is_sampled[cst.id(node)]);
+                        if(sampledStack.top()) {
+                            m_s[s_idx++] = 1;
+                            tmp_b[b_idx++] = 1;
+                            tmp_depth[sample_idx++] = cst.depth(node) / delta_half;
+                        }
+                    } else {
+                        if(sampledStack.top()) {
+                            m_s[s_idx++] = 0;
+                            tmp_b[b_idx++] = 1;
+                        }
+                        sampledStack.pop();
+                    }
                 }
             }
         }
 
-        if(verbose) {
-            auto stop = timer::now();
-            std::cout << "Sampling: " << (stop - start) << std::endl;
+        {
+            auto event = memory_monitor::event("ss-depth");
+            util::init_support(m_s_support, &m_s);
+            m_b = b_type(tmp_b);
+            util::init_support(m_b_select0, &m_b);
+            util::init_support(m_b_select1, &m_b);
+            m_depth = depth_type(tmp_depth);
         }
+    }
 
-        util::init_support(m_s_support, &m_s);
-        m_b = b_type(tmp_b);
-        util::init_support(m_b_select0, &m_b);
-        util::init_support(m_b_select1, &m_b);
-        m_depth = depth_type(tmp_depth);
+    size_type size() const {
+        return m_csa.size();
+    }
+
+    static size_type max_size() {
+        return t_csa::max_size();
+    }
+
+    bool empty() const {
+        return m_csa.empty();
+    }
+
+    void swap(cst_fully &cst) {
+        if(this != &cst) {
+            std::swap(m_delta, cst.m_delta);
+            m_csa.swap(cst.m_csa);
+            m_s.swap(cst.m_s);
+            util::swap_support(m_s_support, cst.m_s_support, &m_s, &(cst.m_s));
+            m_b.swap(cst.m_b);
+            util::swap_support(m_b_select0, cst.m_b_select0, &m_b, &(cst.m_b));
+            util::swap_support(m_b_select1, cst.m_b_select1, &m_b, &(cst.m_b));
+            m_depth.swap(cst.m_depth);
+        }
     }
 
     const_iterator begin() const {
@@ -192,6 +248,32 @@ public:
 
     const_iterator end() const {
         return const_iterator(this, root(), true, false);
+    }
+
+//! Copy Assignment Operator.
+    cst_fully& operator=(const cst_fully &cst) {
+        if(this != &cst) {
+            copy(cst);
+        }
+        return *this;
+    }
+
+//! Move Assignment Operator.
+    cst_fully& operator=(cst_fully &&cst) {
+        if(this != &cst) {
+            m_delta     = cst.m_delta;
+            m_csa       = std::move(cst.m_csa);
+            m_s         = std::move(cst.m_s);
+            m_s_support = std::move(cst.m_s_support);
+            m_s_support.set_vector(&m_s);
+            m_b         = std::move(cst.m_b);
+            m_b_select0 = std::move(cst.m_b_select0);
+            m_b_select0.set_vector(&m_b);
+            m_b_select1 = std::move(cst.m_b_select1);
+            m_b_select1.set_vector(&m_b);
+            m_depth     = std::move(cst.m_depth);
+        }
+        return *this;
     }
 
 //! Serialize to a stream.
@@ -791,10 +873,6 @@ public:
         return m_csa.text[m_csa[v.first] + d - 1];
     }
 
-    size_type size() const {
-        return m_csa.size();
-    }
-
 //! Get the number of nodes in the sampled tree.
         /*!
          * \return The number of nodes in the sampled tree.
@@ -803,6 +881,13 @@ public:
          */
     size_type sampled_nodes() const {
         return m_s.size() / 2;
+    }
+
+//! Return floor(log_2(n))
+    static size_type log2(size_type n) {
+        size_type res = 0;
+        while(n >>= 1) res++;
+        return res;
     }
 };
 
