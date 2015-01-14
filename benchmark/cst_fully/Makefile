@@ -28,8 +28,8 @@ RES_FILE=results/all.txt
 all: execs
 
 timing: input execs indexes $(RES_FILES)
-    cat $(RES_FILES) > $(RES_FILE)
-    @cd visualize; make
+	cat $(RES_FILES) > $(RES_FILE)
+	@cd visualize; make
 
 input: $(TC_PATHS)
 
@@ -40,46 +40,46 @@ indexes: $(INDEXES)
 # Targets for fcst construction
 # Format: bin/build_fcst_[IDX_ID]
 bin/build_fcst_%: $(SRC_DIR)/build_fcst.cpp index.config compile_options.config
-    $(eval IDX_ID:=$(call dim,1,$*))
-    $(eval IDX_TYPE:=$(call config_select,index.config,$(IDX_ID),2))
-    $(eval COMPILE_ID:=$(DEFAULT_COMPILE_ID))
-    $(eval COMPILE_OPTIONS:=$(call config_select,compile_options.config,$(COMPILE_ID),2))
-    $(MY_CXX) $(MY_CXX_FLAGS) $(COMPILE_OPTIONS) -DCST_TYPE="$(IDX_TYPE)" -L$(LIB_DIR) -I$(INC_DIR) -o $@ $< $(LIBS)
+	$(eval IDX_ID:=$(call dim,1,$*))
+	$(eval IDX_TYPE:=$(call config_select,index.config,$(IDX_ID),2))
+	$(eval COMPILE_ID:=$(DEFAULT_COMPILE_ID))
+	$(eval COMPILE_OPTIONS:=$(call config_select,compile_options.config,$(COMPILE_ID),2))
+	$(MY_CXX) $(MY_CXX_FLAGS) $(COMPILE_OPTIONS) -DCST_TYPE="$(IDX_TYPE)" -L$(LIB_DIR) -I$(INC_DIR) -o $@ $< $(LIBS)
 
 # Targets for the cst_fully experiment
 # Format: bin/fcst_time_and_space_[INDEX_ID].[COMPILE_ID]
 bin/fcst_time_and_space_%: $(SRC_DIR)/fcst_time_and_space.cpp
-    $(eval IDX_ID:=$(call dim,1,$*))
-    $(eval IDX_TYPE:=$(call config_select,index.config,$(IDX_ID),2))
-    $(eval COMPILE_ID:=$(call dim,2,$*))
-    $(eval COMPILE_OPTIONS:=$(call config_select,compile_options.config,$(COMPILE_ID),2))
-    $(MY_CXX) $(MY_CXX_FLAGS) $(COMPILE_OPTIONS) -DCST_TYPE="$(IDX_TYPE)" -L$(LIB_DIR) -I$(INC_DIR) -o $@ $< $(LIBS)
+	$(eval IDX_ID:=$(call dim,1,$*))
+	$(eval IDX_TYPE:=$(call config_select,index.config,$(IDX_ID),2))
+	$(eval COMPILE_ID:=$(call dim,2,$*))
+	$(eval COMPILE_OPTIONS:=$(call config_select,compile_options.config,$(COMPILE_ID),2))
+	$(MY_CXX) $(MY_CXX_FLAGS) $(COMPILE_OPTIONS) -DCST_TYPE="$(IDX_TYPE)" -L$(LIB_DIR) -I$(INC_DIR) -o $@ $< $(LIBS)
 
 # indexes/[TC_ID].[IDX_ID]
 indexes/%: test_case.config
-    $(eval TC_ID:=$(call dim,1,$*))
-    $(eval IDX_ID:=$(call dim,2,$*))
-    $(eval TC_PATH:=$(call config_select,test_case.config,$(TC_ID),2))
-    @echo "Building index $(IDX_ID) on $(TC_ID)"
-    @bin/build_fcst_$(IDX_ID) $(TC_PATH) $(TMP_DIR) $@ $@_cst
+	$(eval TC_ID:=$(call dim,1,$*))
+	$(eval IDX_ID:=$(call dim,2,$*))
+	$(eval TC_PATH:=$(call config_select,test_case.config,$(TC_ID),2))
+	@echo "Building index $(IDX_ID) on $(TC_ID)"
+	@bin/build_fcst_$(IDX_ID) $(TC_PATH) $(TMP_DIR) $@ $@_cst
 
 # Format: results/[TC_ID].[INDEX_ID].[COMPILE_ID]
 results/%:
-    $(eval TC_ID:=$(call dim,1,$*))
-    $(eval IDX_ID:=$(call dim,2,$*))
-    $(eval COMPILE_ID:=$(call dim,3,$*))
-    @echo "Running bin/fcst_time_and_space_$(IDX_ID).$(COMPILE_ID) on $(TC_ID)"
-    @echo "# TC_ID = $(TC_ID)" >> $@
-    @echo "# IDX_ID = $(IDX_ID)" >> $@
-    @echo "# COMPILE_ID = $(COMPILE_ID)" >> $@
-    @bin/fcst_time_and_space_$(IDX_ID).$(COMPILE_ID) indexes/$(TC_ID).$(IDX_ID) indexes/$(TC_ID).$(IDX_ID)_cst >> $@
+	$(eval TC_ID:=$(call dim,1,$*))
+	$(eval IDX_ID:=$(call dim,2,$*))
+	$(eval COMPILE_ID:=$(call dim,3,$*))
+	@echo "Running bin/fcst_time_and_space_$(IDX_ID).$(COMPILE_ID) on $(TC_ID)"
+	@echo "# TC_ID = $(TC_ID)" >> $@
+	@echo "# IDX_ID = $(IDX_ID)" >> $@
+	@echo "# COMPILE_ID = $(COMPILE_ID)" >> $@
+	@bin/fcst_time_and_space_$(IDX_ID).$(COMPILE_ID) indexes/$(TC_ID).$(IDX_ID) indexes/$(TC_ID).$(IDX_ID)_cst >> $@
 
 include ../Make.download
 
 clean:
-    rm -f $(FCST_EXECS) $(BUILD_EXECS) $(INDEX_FILES)
+	rm -f $(FCST_EXECS) $(BUILD_EXECS) $(INDEX_FILES)
 
 clean_results:
-    rm -f $(RES_FILES)
+	rm -f $(RES_FILES)
 
 cleanall: clean clean_results
