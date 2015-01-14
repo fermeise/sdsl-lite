@@ -80,4 +80,57 @@ typename t_csa::size_type get_char_pos(typename t_csa::size_type idx, typename t
 #include <iostream>
 #include <string>
 
+inline unsigned char _replace_sentinel(unsigned char c) {
+    return (c == 0) ? '$' : c;
+}
+
+inline unsigned char _vc(unsigned char c) {
+    return (c == '!') ? '_' : '!';
+}
+
+//! Output the suffix tree in tikz-format to stdout
+template<class Cst>
+void output_cst_in_tikz(const Cst& cst) {
+    std::cout << "\
+\\documentclass{article}\n\
+\\usepackage{tikz}\n\
+\\usepackage{verbatim}\n\
+\\begin{document}\n\
+\\begin{tikzpicture}\n\
+[scale=0.8, transform shape, inner sep=1mm, font=\\small,\n\
+innernode/.style={rectangle,draw=blue!50,fill=blue!20,thick,minimum width=#1,minimum height=0.5cm,rounded corners=2mm,anchor=south},\n\
+innernode/.default=4cm,\n\
+leafnode/.style={rectangle,draw=black!50,fill=black!20,thick,minimum width=#1,minimum height=0.5cm,anchor=south},\n\
+leafnode/.default=1cm,\n\
+]\n";
+
+    typedef typename Cst::node_type node_type;
+    typedef typename Cst::size_type size_type;
+    for (typename Cst::const_iterator it = cst.begin(); it != cst.end(); ++it) {
+        if (it.visit() == 1) {
+            node_type v = *it;
+            double f = 1;//1.5;
+            double fy = 0.9;//1.3;
+            std::string style = cst.is_leaf(v) ? "leafnode" : "innernode";
+            double xpos = (cst.rb(v) + cst.lb(v));
+            double ypos = cst.depth(v);
+            std::cout<<"\\node["<<style<<"="<<f* (cst.rb(v) - cst.lb(v) + 1)-0.2
+                     <<"cm] (node "<<ypos<<"x"<<xpos<<") at ("<<f* xpos/2<<","<<-fy* ypos<<") {"<<v<<"};"<<std::endl;
+            if (v != cst.root()) {
+                node_type p = cst.parent(v);
+                double pypos = cst.depth(p);
+                std::cout<<"\\draw[->] ("<<f* xpos/2<<","<<-fy* pypos<<") -- (node "<<ypos<<"x"<<xpos<<".north);"<<std::endl;
+                for (size_type i=cst.depth(p)+1; i <= cst.depth(*it); ++i) {
+                    unsigned char c = _replace_sentinel(cst.edge(*it,i));
+                    double y = -fy*(pypos -1 + i-cst.depth(p) + 0.5);
+                    std::cout << "\\node[anchor=south east] at ("<<f* xpos/2<<","<<y<<"){\\verb"<<_vc(c)<<c<<_vc(c)<<"};"<<std::endl;
+                }
+            }
+        }
+    }
+    std::cout<<"\
+\\end{tikzpicture}\n\
+\\end{document}\n";
+}
+
 #endif
