@@ -204,5 +204,54 @@ void construct(t_index& idx, const std::string& file, cache_config& config, uint
     }
 }
 
+// Specialization for BCSTs
+template<class t_index>
+void construct(t_index& idx, const std::string& file, cache_config& config, uint8_t num_bytes, bcst_tag)
+{
+    auto event = memory_monitor::event("construct BCST");
+    const char* KEY_TEXT = key_text_trait<t_index::alphabet_category::WIDTH>::KEY_TEXT;
+    const char* KEY_BWT  = key_bwt_trait<t_index::alphabet_category::WIDTH>::KEY_BWT;
+    csa_tag csa_t;
+    typename t_index::csa_type::alphabet_type::char2comp_type char2comp;
+    typename t_index::csa_type::alphabet_type::sigma_type     sigma;
+    {
+        // (1) check, if the compressed suffix array is cached
+        typename t_index::csa_type csa;
+        if (!cache_file_exists(std::string(conf::KEY_CSA)+"_"+util::class_to_hash(csa), config)) {
+            cache_config csa_config(false, config.dir, config.id, config.file_map);
+            construct(csa, file, csa_config, num_bytes, csa_t);
+            auto event = memory_monitor::event("store CSA");
+            config.file_map = csa_config.file_map;
+            store_to_cache(csa,std::string(conf::KEY_CSA)+"_"+util::class_to_hash(csa), config);
+        } else {
+            load_from_cache(csa, std::string(conf::KEY_CSA)+"_"+util::class_to_hash(csa), config);
+        }
+        register_cache_file(std::string(conf::KEY_CSA)+"_"+util::class_to_hash(csa), config);
+        char2comp = csa.char2comp;
+        sigma = csa.sigma;
+    }
+    {
+        // (2) check, if the longest common prefix array is cached
+        auto event = memory_monitor::event("LCP");
+        register_cache_file(KEY_TEXT, config);
+        register_cache_file(KEY_BWT, config);
+        register_cache_file(conf::KEY_SA, config);
+        if (!cache_file_exists(conf::KEY_LCP, config)) {
+            construct_blcp_PHI<t_index::alphabet_category::WIDTH,
+                               typename t_index::csa_type::alphabet_type>(config, char2comp, sigma);
+        }
+        register_cache_file(conf::KEY_LCP, config);
+    }
+    {
+        auto event = memory_monitor::event("CST");
+        t_index tmp(config);
+        tmp.swap(idx);
+    }
+    if (config.delete_files) {
+        auto event = memory_monitor::event("delete temporary files");
+        util::delete_all_files(config.file_map);
+    }
+}
+
 } // end namespace sdsl
 #endif

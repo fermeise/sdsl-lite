@@ -1,6 +1,6 @@
 
-#ifndef INCLUDED_SDSL_CST_FULLY
-#define INCLUDED_SDSL_CST_FULLY
+#ifndef INCLUDED_SDSL_CST_FULLY_BLIND
+#define INCLUDED_SDSL_CST_FULLY_BLIND
 
 #include "bit_vectors.hpp"
 #include "vectors.hpp"
@@ -17,70 +17,91 @@ template<class t_csa = csa_wt<>,
          uint32_t t_delta = 0,
          bool t_sample_leaves = false
          >
-class cst_fully {
+class cst_fully_blind {
 public:
-    typedef cst_dfs_const_forward_iterator<cst_fully> const_iterator;
-    typedef typename t_csa::size_type                 size_type;
-    typedef t_csa                                     csa_type;
-    typedef typename t_csa::char_type                 char_type;
-    typedef std::pair<size_type, size_type>           node_type; // Nodes are represented by their left and right leafs (inclusive)
-    typedef size_type                                 leaf_type; // Index of a leaf
-    typedef size_type                                 sampled_node_type; // Node in the sampled tree represented by its index in s
-    typedef t_s_support                               s_support_type;
-    typedef t_b                                       b_type;
-    typedef typename t_b::select_0_type               b_select_0_type;
-    typedef typename t_b::select_1_type               b_select_1_type;
-    typedef t_depth                                   depth_type;
-    typedef cst_sada<t_csa, lcp_wt<> >                construction_cst_type;
+    typedef cst_dfs_const_forward_iterator<cst_fully_blind> const_iterator;
+    typedef typename t_csa::size_type                       size_type;
+    typedef t_csa                                           csa_type;
+    typedef typename t_csa::char_type                       char_type;
+    typedef std::pair<size_type, size_type>                 node_type; // Nodes are represented by their left and right leafs (inclusive)
+    typedef size_type                                       leaf_type; // Index of a leaf
+    typedef size_type                                       bin_node_type; // Node in the sampled tree represented by its index in bp_bin
+    typedef size_type                                       sampled_node_type; // Node in the sampled tree represented by its index in s
+    typedef t_s_support                                     s_support_type;
+    typedef t_b                                             b_type;
+    typedef typename t_b::select_0_type                     b_select_0_type;
+    typedef typename t_b::select_1_type                     b_select_1_type;
+    typedef int_vector<>                                    pd_type;
+    typedef t_depth                                         depth_type;
+    typedef cst_sada<t_csa, lcp_wt<> >                      construction_cst_type;
 
-    typedef typename t_csa::alphabet_category         alphabet_category;
-    typedef cst_tag                                   index_category;
+    typedef typename t_csa::alphabet_category               alphabet_category;
+    typedef bcst_tag                                        index_category;
 
 private:
     size_type                      m_delta;
     csa_type                       m_csa;
-    bit_vector                     m_s;
-    s_support_type                 m_s_support;
+    bit_vector                     m_bp_bin;
+    t_s_support                    m_bp_bin_support;
     b_type                         m_b;
     b_select_0_type                m_b_select0;
     b_select_1_type                m_b_select1;
+    pd_type                        m_pd;
+    bit_vector                     m_in_st;
+    bit_vector                     m_in_s;
+    bit_vector::rank_1_type        m_in_s_rank1;
+    bit_vector::select_1_type      m_in_s_select1;
+    bit_vector                     m_s;
+    s_support_type                 m_s_support;
     depth_type                     m_depth;
 
-    void copy(const cst_fully& cst) {
-        m_delta     = cst.m_delta;
-        m_csa       = cst.m_csa;
-        m_s         = cst.m_s;
-        m_s_support = cst.m_s_support;
-        m_s_support.set_vector(&m_s);
-        m_b         = cst.m_b;
-        m_b_select0 = cst.m_b_select0;
+    void copy(const cst_fully_blind& cst) {
+        m_delta          = cst.m_delta;
+        m_csa            = cst.m_csa;
+        m_bp_bin         = cst.m_bp_bin;
+        m_bp_bin_support = cst.m_bp_bin_support;
+        m_bp_bin_support.set_vector(&m_bp_bin);
+        m_b              = cst.m_b;
+        m_b_select0      = cst.m_b_select0;
         m_b_select0.set_vector(&m_b);
-        m_b_select1 = cst.m_b_select1;
+        m_b_select1      = cst.m_b_select1;
         m_b_select1.set_vector(&m_b);
-        m_depth     = cst.m_depth;
+        m_pd             = cst.m_pd;
+        m_in_st          = cst.m_in_st;
+        m_in_s           = cst.m_in_s;
+        m_in_s_rank1     = cst.m_in_s_rank1;
+        m_in_s_rank1.set_vector(&m_in_s);
+        m_in_s_select1   = cst.m_in_s_select1;
+        m_in_s_select1.set_vector(&m_in_s);
+        m_s              = cst.m_s;
+        m_s_support      = cst.m_s_support;
+        m_s_support.set_vector(&m_s);
+        m_depth          = cst.m_depth;
     }
 
 public:
-    const size_type   &delta = m_delta;
-    const csa_type    &csa = m_csa;
-    const bit_vector  &s = m_s;
-    const b_type      &b = m_b;
+    const size_type                &delta = m_delta;
+    const csa_type                 &csa = m_csa;
+    const bit_vector               &bp_bin = m_bp_bin;
+    const b_type                   &b = m_b;
+    const bit_vector               &s = m_s;
 
 //! Default constructor
-    cst_fully() {}
+    cst_fully_blind() {}
 
 //! Copy constructor
-    cst_fully(const cst_fully &cst) {
+    cst_fully_blind(const cst_fully_blind &cst) {
         copy(cst);
     }
 
 //! Move constructor
-    cst_fully(cst_fully &&cst) {
+    cst_fully_blind(cst_fully_blind &&cst) {
         *this = std::move(cst);
     }
 
 //! Construct CST from file_map
-    cst_fully(cache_config &config);
+    cst_fully_blind(cache_config &config);
+
 
     size_type size() const {
         return m_csa.size();
@@ -94,15 +115,22 @@ public:
         return m_csa.empty();
     }
 
-    void swap(cst_fully &cst) {
+    void swap(cst_fully_blind &cst) {
         if(this != &cst) {
             std::swap(m_delta, cst.m_delta);
             m_csa.swap(cst.m_csa);
-            m_s.swap(cst.m_s);
-            util::swap_support(m_s_support, cst.m_s_support, &m_s, &(cst.m_s));
+            m_bp_bin.swap(cst.m_bp_bin);
+            util::swap_support(m_bp_bin_support, cst.m_bp_bin_support, &m_bp_bin, &(cst.m_bp_bin));
             m_b.swap(cst.m_b);
             util::swap_support(m_b_select0, cst.m_b_select0, &m_b, &(cst.m_b));
             util::swap_support(m_b_select1, cst.m_b_select1, &m_b, &(cst.m_b));
+            m_pd.swap(cst.m_pd);
+            m_in_st.swap(cst.m_in_st);
+            m_in_s.swap(cst.m_in_s);
+            util::swap_support(m_in_s_rank1, cst.m_in_s_rank1, &m_in_s, &(cst.m_in_s));
+            util::swap_support(m_in_s_select1, cst.m_in_s_select1, &m_in_s, &(cst.m_in_s));
+            m_s.swap(cst.m_s);
+            util::swap_support(m_s_support, cst.m_s_support, &m_s, &(cst.m_s));
             m_depth.swap(cst.m_depth);
         }
     }
@@ -119,7 +147,7 @@ public:
     }
 
 //! Copy Assignment Operator.
-    cst_fully& operator=(const cst_fully &cst) {
+    cst_fully_blind& operator=(const cst_fully_blind &cst) {
         if(this != &cst) {
             copy(cst);
         }
@@ -127,19 +155,29 @@ public:
     }
 
 //! Move Assignment Operator.
-    cst_fully& operator=(cst_fully &&cst) {
+    cst_fully_blind& operator=(cst_fully_blind &&cst) {
         if(this != &cst) {
-            m_delta     = cst.m_delta;
-            m_csa       = std::move(cst.m_csa);
-            m_s         = std::move(cst.m_s);
-            m_s_support = std::move(cst.m_s_support);
-            m_s_support.set_vector(&m_s);
-            m_b         = std::move(cst.m_b);
-            m_b_select0 = std::move(cst.m_b_select0);
+            m_delta          = cst.m_delta;
+            m_csa            = std::move(cst.m_csa);
+            m_bp_bin         = std::move(cst.m_bp_bin);
+            m_bp_bin_support = std::move(cst.m_bp_bin_support);
+            m_bp_bin_support.set_vector(&m_bp_bin);
+            m_b              = std::move(cst.m_b);
+            m_b_select0      = std::move(cst.m_b_select0);
             m_b_select0.set_vector(&m_b);
-            m_b_select1 = std::move(cst.m_b_select1);
+            m_b_select1      = std::move(cst.m_b_select1);
             m_b_select1.set_vector(&m_b);
-            m_depth     = std::move(cst.m_depth);
+            m_pd             = std::move(cst.m_pd);
+            m_in_st          = std::move(cst.m_in_st);
+            m_in_s           = std::move(cst.m_in_s);
+            m_in_s_rank1     = std::move(cst.m_in_s_rank1);
+            m_in_s_rank1.set_vector(&m_in_s);
+            m_in_s_select1   = std::move(cst.m_in_s_select1);
+            m_in_s_select1.set_vector(&m_in_s);
+            m_s              = std::move(cst.m_s);
+            m_s_support      = std::move(cst.m_s_support);
+            m_s_support.set_vector(&m_s);
+            m_depth          = std::move(cst.m_depth);
         }
         return *this;
     }
@@ -154,11 +192,18 @@ public:
         out.write((char*) &m_delta, sizeof(m_delta));
         written_bytes += sizeof(m_delta);
         written_bytes += m_csa.serialize(out, child, "csa");
-        written_bytes += m_s.serialize(out, child, "s");
-        written_bytes += m_s_support.serialize(out, child, "s_support");
+        written_bytes += m_bp_bin.serialize(out, child, "bp_bin");
+        written_bytes += m_bp_bin_support.serialize(out, child, "bp_bin_support");
         written_bytes += m_b.serialize(out, child, "b");
         written_bytes += m_b_select0.serialize(out, child, "b_select0");
         written_bytes += m_b_select1.serialize(out, child, "b_select1");
+        written_bytes += m_pd.serialize(out, child, "pd");
+        written_bytes += m_in_st.serialize(out, child, "in_st");
+        written_bytes += m_in_s.serialize(out, child, "in_s");
+        written_bytes += m_in_s_rank1.serialize(out, child, "in_s_rank1");
+        written_bytes += m_in_s_select1.serialize(out, child, "in_s_select1");
+        written_bytes += m_s.serialize(out, child, "s");
+        written_bytes += m_s_support.serialize(out, child, "s_support");
         written_bytes += m_depth.serialize(out, child, "depth");
         structure_tree::add_size(child, written_bytes);
         return written_bytes;
@@ -170,11 +215,18 @@ public:
     void load(std::istream& in) {
         in.read((char*) &m_delta, sizeof(m_delta));
         m_csa.load(in);
-        m_s.load(in);
-        m_s_support.load(in, &m_s);
+        m_bp_bin.load(in);
+        m_bp_bin_support.load(in, &m_bp_bin);
         m_b.load(in);
         m_b_select0.load(in, &m_b);
         m_b_select1.load(in, &m_b);
+        m_pd.load(in);
+        m_in_st.load(in);
+        m_in_s.load(in);
+        m_in_s_rank1.load(in, &m_in_s);
+        m_in_s_select1.load(in, &m_in_s);
+        m_s.load(in);
+        m_s_support.load(in, &m_s);
         m_depth.load(in);
     }
 
@@ -208,13 +260,21 @@ public:
         return v.first <= w.first && v.second >= w.second;
     }
 
+    sampled_node_type bin_to_s(bin_node_type w) const {
+        return m_in_s_rank1.rank(w) + m_in_s[w] - 1;
+    }
+
+    bin_node_type s_to_bin(sampled_node_type u) const {
+        return m_in_s_select1.select(u + 1);
+    }
+
 //! Returns the index of the last bracket in S before the leaf with index l.
         /*!
-         * \param v The index of leaf l.
+         * \param l The index of leaf l.
          * \return The index of the last bracket in S before the leaf with index l.
          */
-    sampled_node_type pred(leaf_type v) const {
-        return m_b_select0.select(v + 1) - v - 1;
+    sampled_node_type pred(leaf_type l) const {
+        return bin_to_s(m_b_select0.select(l + 1) - l - 1);
     }
 
 //! Returns the LSA (lowest sampled ancestor) for a leaf with index l.
@@ -243,11 +303,21 @@ public:
     node_type sampled_node(sampled_node_type u) const {
         assert(m_s[u] == 1);
         size_type u_end = m_s_support.find_close(u);
-        size_type b_left = m_b_select1.select(u + 1);
-        size_type b_right = m_b_select1.select(u_end + 1);
+        size_type b_left = m_b_select1.select(s_to_bin(u) + 1);
+        size_type b_right = m_b_select1.select(s_to_bin(u_end) + 1);
 
-        return node_type(b_left - u,
-                         b_right - u_end - 1);
+        return node_type(b_left - s_to_bin(u),
+                         b_right - s_to_bin(u_end) - 1);
+    }
+
+    node_type bin_node(bin_node_type w) const {
+        assert(m_bp_bin[w] == 1);
+        size_type w_end = m_bp_bin_support.find_close(w);
+        size_type b_left = m_b_select1.select(w + 1);
+        size_type b_right = m_b_select1.select(w_end + 1);
+
+        return node_type(b_left - w,
+                         b_right - w_end - 1);
     }
 
 //! Returns the LCSA (lowest common sampled ancestor) for two sampled nodes.
@@ -378,7 +448,46 @@ public:
             sampled_node_type node = lcsa(lsa_leaf(l), lsa_leaf(r));
             size_type d = i + depth(node);
 
+            // TODO: Just for testing
             if(d > max_d) {
+                max_d = d;
+                max_d_i = i;
+                max_d_node = node;
+            }
+
+            char_type c = m_csa.F[l];
+            char_type comp = csa.char2comp[c];
+            res_label[i] = c;
+
+            // break if LCA of lb and rb is root
+            if(l < m_csa.C[comp] || r >= m_csa.C[comp + 1]) {
+                break;
+            }
+
+            l = m_csa.psi[l];
+            r = m_csa.psi[r];
+        }
+
+        res_i = max_d_i;
+        res_u = max_d_node;
+
+        return max_d;
+    }
+
+    size_type depth_lca_2(leaf_type l, leaf_type r,
+                        size_type &res_i, sampled_node_type &res_u, std::vector<char_type> &res_label) const {
+        assert(l<r);
+
+        size_type max_d = 0;
+        size_type max_d_i = 0;
+        sampled_node_type max_d_node = 0;
+
+        for(size_type i = 0; i < m_delta; i++) {
+            sampled_node_type node = lcsa(lsa_leaf(l), lsa_leaf(r));
+            size_type d = i + depth(node);
+
+            // TODO: Just for testing
+            if(d >= max_d) {
                 max_d = d;
                 max_d_i = i;
                 max_d_node = node;
@@ -444,21 +553,13 @@ public:
         return ancestor(right_parent, left_parent) ? left_parent : right_parent;
     }
 
-    node_type child(node_type v, char_type c) const {
+    /*node_type child(node_type v, char_type c) const {
         if(is_leaf(v)) {
             return root();
         }
 
-        size_type d = depth(v);
-
-        if(64 * log(v.second + 1 - v.first) < (2 + log2(m_csa.sigma) * d)) {
-            return child_1(v, c, d);
-        } else {
-            return child_2(v, c, d);
-        }
-
-        //return child_1(v, c, d);
-    }
+        return child_1(v, c, depth(v));
+    }*/
 
 //! Get the child w of node v which edge label (v,w) starts with character c.
         /*!
@@ -518,31 +619,57 @@ public:
         return node_type(res_lb, res_rb);
     }
 
-//! Get the child w of node v which edge label (v,w) starts with character c.
-        /*!
-         * \param v A node v.
-         * \param c First character of the edge label from v to the desired child.
-         * \return The child node w which edge label (v,w) starts with c or root() if it does not exist.
-         * \par Time complexity
-         *       \f$ \Order{ m \cdot (\psiaccess + t_{rank\_bwt}) } \f$,
-                 where \f$ m \f$ is the number of leaves under node v.
-         */
-    node_type child_2(node_type v, char_type c, size_type d) const {
-        std::vector<char_type> label(d, 0);
-
-        leaf_type l = v.first;
-
-        for(size_type i = 0; i < d; i++) {
-            label[i] = m_csa.F[l];
-            l = m_csa.psi[l];
+    node_type child(node_type v, char_type c) const {
+        if(is_leaf(v)) {
+            return root();
         }
 
-        l = 0;
-        leaf_type r = size() - 1;
+        size_type l = lb(v);
+        size_type r = rb(v);
 
-        backward_search(m_csa, l, r, c, l, r);
-        for(size_type k = 0; k < d; k++) {
-            backward_search(m_csa, l, r, label[d - k - 1], l, r);
+        size_type i;
+        sampled_node_type u;
+        std::vector<char_type> label(delta, 0);
+        depth_lca_2(l, r, i, u, label);
+
+        // fancy child search
+        if(u == sampled_root()) {
+            l = 0;
+            r = size() - 1;
+
+            backward_search(m_csa, l, r, c, l, r);
+        } else {
+            const size_type width = bits::hi(m_csa.sigma-1)+1;
+            bin_node_type w = s_to_bin(u);
+            do {
+                size_type pd = m_pd[m_bp_bin_support.rank(w) - 1];
+                auto comp = m_csa.char2comp[c];
+                bool second = (comp & (1 << (width - pd - 1)));
+                if(second) {
+                    bin_node_type new_w = m_bp_bin_support.find_close(w + 1) + 1;
+                    if(m_bp_bin[new_w]) {
+                        w = new_w;
+                    } else {
+                        // W has only one child
+                        w++;
+                    }
+                } else {
+                    w++;
+                }
+            } while(m_in_st[m_bp_bin_support.rank(w) - 1] == 0);
+
+            node_type v2 = bin_node(w);
+            //node_type v2 = child_1(sampled_node(u), c, depth(u));
+            l = lb(v2);
+            r = rb(v2);
+
+            if(m_csa.text[m_csa[l] + depth(u)] != c) {
+                return root();
+            }
+        }
+
+        for(size_type k = 0; k < i; k++) {
+            backward_search(m_csa, l, r, label[i - k - 1], l, r);
         }
 
         if(l > r) {
@@ -550,155 +677,6 @@ public:
         } else {
             return node_type(l, r);
         }
-    }
-
-//! Get the child w of node v which edge label (v,w) starts with character c.
-        /*!
-         * \param v A node v.
-         * \param c First character of the edge label from v to the desired child.
-         * \return The child node w which edge label (v,w) starts with c or root() if it does not exist.
-         * \par Time complexity
-         *       \f$ \Order{ \saaccess + \theta \cdot t_{rank\_bwt} + \log m + log \theta \cdot (\saaccess+\isaaccess) } \f$,
-                 where \f$ \theta \f$ is the SA and ISA sampling factor and \f$ m \f$ is the number of leaves under node v.
-         */
-    node_type child_3(node_type v, char_type c, size_type d) const {
-        // Assert that SA order SA sampling and text oder ISA sampling
-        // with the same sampling factor is used.
-
-        if(v == root()) {
-            leaf_type& l = v.first;
-            leaf_type& r = v.second;
-            backward_search(m_csa, l, r, c, l, r);
-            return v;
-        }
-
-        const size_type theta = std::min(d + 1, static_cast<size_type>(csa_type::sa_sample_dens));
-
-        std::vector<char_type> label(theta, 0);
-
-        leaf_type l = m_csa.isa[m_csa[v.first] + d - 1];
-        for(size_type i = 0; i < theta; i++) {
-            label[theta - i - 1] = m_csa.F[l];
-            l = m_csa.lf[l];
-        }
-
-        l = 0;
-        leaf_type r = size() - 1;
-
-        std::vector<node_type> D(theta, root());
-
-        backward_search(m_csa, l, r, c, l, r);
-        D[0] = node_type(l, r);
-        for(size_type i = 1; i < theta; i++) {
-            backward_search(m_csa, l, r, label[theta - i], l, r);
-            D[i] = node_type(l, r);
-        }
-
-        if(d < theta) {
-            std::tie(l, r) = D[d];
-            if(l > r) {
-                return root();
-            } else {
-                return node_type(l, r);
-            }
-        }
-
-        leaf_type res_lb;
-        leaf_type res_rb;
-
-        {
-            leaf_type left = v.first;
-            leaf_type right = v.second;
-
-            while(true) {
-                size_type ls = (left + theta - 1) / theta;
-                size_type rs = right / theta;
-
-                if(ls >= rs) {
-                    break;
-                }
-                size_type sample_pos = (ls + rs) / 2;
-                size_type text_pos = m_csa.sa_sample[sample_pos * theta];
-                size_type d2 = ((text_pos + d) / theta) * theta - text_pos;
-                leaf_type sample = m_csa.isa_sample[text_pos + d2];
-
-                if(sample >= D[d - d2].first) {
-                    if(sample <= D[d - d2].second) {
-                        right = sample_pos * theta;
-                    } else {
-                        right = sample_pos * theta - 1;
-                    }
-                } else {
-                    left = sample_pos * theta + 1;
-                }
-            }
-
-            while(left < right) {
-                leaf_type sample_pos = (left + right) / 2;
-                leaf_type sample = m_csa.isa[m_csa[sample_pos] + d];
-                if(sample >= D[0].first) {
-                    if(sample <= D[0].second) {
-                        right = sample_pos;
-                    } else {
-                        right = sample_pos - 1;
-                    }
-                } else {
-                    left = sample_pos + 1;
-                }
-            }
-
-            if(m_csa.text[m_csa[left] + d] != c) {
-                return root();
-            }
-
-            res_lb = left;
-        }
-
-        {
-            leaf_type left = v.first;
-            leaf_type right = v.second;
-
-            while(true) {
-                size_type ls = (left + theta - 1) / theta;
-                size_type rs = right / theta;
-
-                if(ls >= rs) {
-                    break;
-                }
-                size_type sample_pos = (ls + rs + 1) / 2;
-                size_type text_pos = m_csa.sa_sample[sample_pos * theta];
-                size_type d2 = ((text_pos + d) / theta) * theta - text_pos;
-                leaf_type sample = m_csa.isa_sample[text_pos + d2];
-
-                if(sample >= D[d - d2].first) {
-                    if(sample <= D[d - d2].second) {
-                        left = sample_pos * theta;
-                    } else {
-                        right = sample_pos * theta - 1;
-                    }
-                } else {
-                    left = sample_pos * theta + 1;
-                }
-            }
-
-            while(left < right) {
-                leaf_type sample_pos = (left + right + 1) / 2;
-                leaf_type sample = m_csa.isa[m_csa[sample_pos] + d];
-                if(sample >= D[0].first) {
-                    if(sample <= D[0].second) {
-                        left = sample_pos;
-                    } else {
-                        right = sample_pos - 1;
-                    }
-                } else {
-                    left = sample_pos + 1;
-                }
-            }
-
-            res_rb = left;
-        }
-
-        return node_type(res_lb, res_rb);
     }
 
 //! Get the i-th child of a node v.
@@ -747,7 +725,7 @@ public:
         return m_csa.text[m_csa[v.first] + d - 1];
     }
 
-//! Get the number of nodes in the sampled tree.
+    //! Get the number of nodes in the sampled tree.
         /*!
          * \return The number of nodes in the sampled tree.
          * \par Time complexity
@@ -759,8 +737,17 @@ public:
 };
 
 template<class t_csa, class t_s_support, class t_b, class t_depth, uint32_t t_delta, bool t_sample_leaves>
-cst_fully<t_csa, t_s_support, t_b, t_depth, t_delta, t_sample_leaves>::cst_fully(cache_config &config) {
-    cst_sada<csa_type, lcp_wt<> > cst(config);
+cst_fully_blind<t_csa, t_s_support, t_b, t_depth, t_delta, t_sample_leaves>::cst_fully_blind(cache_config &config) {
+    // 1a. Construct SCT
+    cst_sada<t_csa, lcp_wt<> > cst(config);
+
+    // 1b. Construct SCT of binary tree
+    rename(config.file_map[conf::KEY_LCP], config.file_map[conf::KEY_LCP] + ".tmp");
+    rename(config.file_map[conf::KEY_BLCP], config.file_map[conf::KEY_LCP]);
+    // TODO: sct construction does not cope with LCP values larger than n
+    cst_sada<t_csa, lcp_wt<> > cst_bin(config);
+    rename(config.file_map[conf::KEY_LCP], config.file_map[conf::KEY_BLCP]);
+    rename(config.file_map[conf::KEY_LCP] + ".tmp", config.file_map[conf::KEY_LCP]);
 
     if(t_delta > 0) {
         m_delta = t_delta;
@@ -774,14 +761,19 @@ cst_fully<t_csa, t_s_support, t_b, t_depth, t_delta, t_sample_leaves>::cst_fully
     }
 
     size_type delta_half = m_delta / 2;
+    typedef csa_iterator<t_csa> csa_iterator_type;
 
     bit_vector is_sampled(cst.nodes(), false);
     is_sampled[cst.id(cst.root())] = true; // always sample root
     size_type sample_count = 1;
 
+    bit_vector is_sampled_s(cst.nodes(), false);
+    is_sampled_s[cst.id(cst.root())] = true; // always sample root
+    size_type sample_count_s = 1;
+
     if(t_sample_leaves) {
         auto event = memory_monitor::event("scan-leaves");
-        for(auto it = csa_iterator<csa_type>::begin(cst.csa); it != csa_iterator<csa_type>::end(cst.csa); ++it) {
+        for(auto it = csa_iterator_type::begin(cst.csa); it != csa_iterator_type::end(cst.csa); ++it) {
             const size_type d = it.depth();
             if(d + delta_half <= cst.size() and
                d % delta_half == 0) {
@@ -791,6 +783,10 @@ cst_fully<t_csa, t_s_support, t_b, t_depth, t_delta, t_sample_leaves>::cst_fully
                     is_sampled[id] = true;
                     sample_count++;
                 }
+                if(!is_sampled_s[id]) {
+                    is_sampled_s[id] = true;
+                    sample_count_s++;
+                }
             }
         }
     }
@@ -798,7 +794,7 @@ cst_fully<t_csa, t_s_support, t_b, t_depth, t_delta, t_sample_leaves>::cst_fully
     {
         auto event = memory_monitor::event("scan-nodes");
         for(auto it = cst.begin(); it != cst.end(); ++it) {
-            if(it.visit() == 1 and cst.is_leaf(*it) == false) {
+            if(it.visit() == 1 and cst.is_leaf(*it) == false and *it != cst.root()) {
                 const auto node = *it;
                 const size_type d = cst.depth(node);
                 if(d % delta_half == 0) {
@@ -811,75 +807,184 @@ cst_fully<t_csa, t_s_support, t_b, t_depth, t_delta, t_sample_leaves>::cst_fully
                         is_sampled[id] = true;
                         sample_count++;
                     }
+                    if(!is_sampled_s[id]) {
+                        is_sampled_s[id] = true;
+                        sample_count_s++;
+                    }
+                    for(auto child = cst.select_child(node, 1); child != cst.root(); child = cst.sibling(child)) {
+                        auto c = cst.edge(child, cst.depth(node) + 1);
+                        auto child2 = cst.child(v, c);
+                        const size_type id2 = cst.id(child2);
+                        if(!is_sampled[id2]) {
+                            is_sampled[id2] = true;
+                            sample_count++;
+                        }
+                    }
                 }
             }
         }
     }
 
+    // 3. Choose sampled pseudo-nodes
+    struct entry_type {
+        entry_type(size_type _node_count, size_type _carry)
+        : node_count(_node_count), carry(_carry) {}
+        size_type node_count;
+        size_type carry;
+    };
+
+    bit_vector is_sampled_bin(cst_bin.nodes(), false);
+    size_type sample_count_bin = 0;
+
+    std::stack<entry_type> stack;
+    stack.push(entry_type(0, 0));
+
+    for (auto it=cst_bin.begin(), end=cst_bin.end(), it2=cst.begin(), end2=cst.end(); it!=end; ++it) {
+        bool in_cst = cst_bin.lb(*it) == cst.lb(*it2) && cst_bin.rb(*it) == cst.rb(*it2);
+
+        const size_type width = bits::hi(cst_bin.csa.sigma-1)+1;
+        bool in_cst_d = cst_bin.is_leaf(*it) || *it == cst_bin.root() || cst_bin.depth(*it) / width != cst_bin.depth(cst_bin.parent(*it)) / width;
+
+        if(in_cst != in_cst_d) {
+            auto p = cst_bin.parent(*it);
+            auto p2 = cst.parent(cst.lca(cst.select_leaf(cst_bin.lb(*it)), cst.select_leaf(cst_bin.rb(*it))));
+            std::cout << "[" << cst_bin.lb(*it) << ", " << cst_bin.rb(*it) << "] BIN_P = ["
+                << cst_bin.lb(p) << ", " << cst_bin.rb(p) << "] P = ["
+                << cst_bin.lb(p2) << ", " << cst_bin.rb(p2) << "" << std::endl;
+        }
+
+        if(cst_bin.is_leaf(*it)) {
+            if(in_cst && is_sampled[cst.id(*it2)]) {
+                is_sampled_bin[cst_bin.id(*it)] = 1;
+                sample_count_bin++;
+                stack.top().node_count++;
+            }
+        } else {
+            if(1 == it.visit()) {
+                stack.push(entry_type(0, 0));
+            }
+            if(2 == it.visit()) {
+                if(stack.top().node_count == 1 && stack.top().carry > 0) {
+                    is_sampled_bin[stack.top().carry] = 0;
+                    sample_count_bin--;
+                    stack.top().node_count = 2;
+                }
+
+                if(in_cst && is_sampled[cst.id(*it2)]) {
+                    is_sampled_bin[cst_bin.id(*it)] = 1;
+                    sample_count_bin++;
+                    stack.pop();
+                    stack.top().node_count++;
+                } else if(stack.top().node_count == 2) {
+                    is_sampled_bin[cst_bin.id(*it)] = 1;
+                    sample_count_bin++;
+                    stack.pop();
+                    stack.top().node_count++;
+                    //stack.top().carry = cst_bin.id(*it);
+                } else if(stack.top().node_count == 1) {
+                    stack.pop();
+                    stack.top().node_count++;
+                } else {
+                    stack.pop();
+                }
+            }
+        }
+        if(in_cst) {
+            ++it2;
+        }
+    }
+
+    // 4. Create sampled tree
+    const size_type width = bits::hi(cst_bin.csa.sigma-1)+1;
+
     bit_vector tmp_b;
     int_vector<64> tmp_depth;
 
-    m_s.resize(2 * sample_count);
-    tmp_b.resize(2 * sample_count + cst.size());
-    tmp_depth.resize(sample_count);
+    m_bp_bin.resize(2 * sample_count_bin);
+    tmp_b.resize(2 * sample_count_bin + cst.size());
+    m_pd.width(bits::hi(width-1)+1);
+    m_pd.resize(sample_count_bin);
+    m_in_st.resize(sample_count_bin);
+    m_in_s.resize(2 * sample_count_bin);
+    m_s.resize(2 * sample_count_s);
+    tmp_depth.resize(sample_count_s);
 
-    {
-        auto event = memory_monitor::event("node-sampling");
+    size_type bp_bin_idx = 0;
+    size_type b_idx = 0;
+    size_type pd_idx = 0;
+    size_type in_st_idx = 0;
+    size_type in_s_idx = 0;
+    size_type s_idx = 0;
+    size_type depth_idx = 0;
 
-        size_type s_idx = 0;
-        size_type b_idx = 0;
-        size_type sample_idx = 0;
+    int step = 0;
+    for (auto it=cst_bin.begin(), end=cst_bin.end(), it2=cst.begin(), end2=cst.end(); it!=end; ++it) {
+        bool in_cst = cst_bin.lb(*it) == cst.lb(*it2) && cst_bin.rb(*it) == cst.rb(*it2);
+        if(step % 10 == 0) {
+            std::cout << "";
+        }
+        step++;
 
-        for(auto it = cst.begin(); it != cst.end(); ++it) {
-            auto node = *it;
-            if(it.visit() == 1 && is_sampled[cst.id(node)]) {
+        if(it.visit() == 1 && is_sampled_bin[cst_bin.id(*it)]) {
+            m_bp_bin[bp_bin_idx++] = 1;
+            tmp_b[b_idx++] = 1;
+            if(cst_bin.is_leaf(*it)) {
+                m_pd[pd_idx++] = 0;
+            } else {
+                //size_type d_rmq = cst_bin.lcp[cst_bin.rmq(cst_bin.lb(*it) + 1, cst_bin.rb(*it))];
+
+                size_type d = cst_bin.depth(*it);
+                if(cst_bin.is_leaf(*it)) {
+                    d *= width;
+                }
+                m_pd[pd_idx++] = d % width;
+            }
+            m_in_st[in_st_idx++] = (in_cst ? 1 : 0);
+            if(in_cst && is_sampled_s[cst.id(*it2)]) {
+                m_in_s[in_s_idx++] = 1;
                 m_s[s_idx++] = 1;
-                tmp_b[b_idx++] = 1;
-                tmp_depth[sample_idx++] = cst.depth(node) / delta_half;
+                size_type d = cst_bin.depth(*it);
+                if(!cst_bin.is_leaf(*it) && *it != cst.root()) {
+                    d /= width;
+                }
+                tmp_depth[depth_idx++] = d / delta_half;
+            } else {
+                m_in_s[in_s_idx++] = 0;
             }
-            if(cst.is_leaf(node)) {
-                tmp_b[b_idx++] = 0;
-            }
-            if((cst.is_leaf(node) || it.visit() == 2) && is_sampled[cst.id(node)]) {
+        }
+        if(cst_bin.is_leaf(*it)) {
+            tmp_b[b_idx++] = 0;
+        }
+        if((cst_bin.is_leaf(*it) || it.visit() == 2) && is_sampled_bin[cst_bin.id(*it)]) {
+            m_bp_bin[bp_bin_idx++] = 0;
+            tmp_b[b_idx++] = 1;
+            if(in_cst && is_sampled_s[cst.id(*it2)]) {
+                m_in_s[in_s_idx++] = 1;
                 m_s[s_idx++] = 0;
-                tmp_b[b_idx++] = 1;
+            } else {
+                m_in_s[in_s_idx++] = 0;
             }
+        }
+
+        if(in_cst) {
+            ++it2;
         }
     }
 
     {
         auto event = memory_monitor::event("ss-depth");
         m_csa = std::move(cst.csa);
-        util::init_support(m_s_support, &m_s);
+        util::init_support(m_bp_bin_support, &m_bp_bin);
         m_b = b_type(tmp_b);
         util::init_support(m_b_select0, &m_b);
         util::init_support(m_b_select1, &m_b);
+        util::init_support(m_in_s_rank1, &m_in_s);
+        util::init_support(m_in_s_select1, &m_in_s);
+        util::init_support(m_s_support, &m_s);
         m_depth = depth_type(tmp_depth);
     }
 }
 
-template<class t_csa,
-         class t_s_support,
-         class t_b,
-         class t_depth
-         >
-std::ostream& operator<< (std::ostream &out, const cst_fully<t_csa, t_s_support, t_b, t_depth> &cst) {
-    typedef typename cst_fully<t_csa, t_s_support, t_b, t_depth>::size_type size_type;
-
-    size_type leaf_idx = 0;
-    size_type s_idx = 0;
-
-    for(auto value: cst.b) {
-        if(value) {
-            out << (cst.s[s_idx++] ? "(" : ")");
-        } else {
-            out << leaf_idx++;
-        }
-    }
-
-    return out;
-}
-
 }// end namespace sdsl
 
-#endif // INCLUDED_SDSL_CST_FULLY
+#endif // INCLUDED_SDSL_CST_FULLY_BLIND

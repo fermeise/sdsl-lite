@@ -5,10 +5,8 @@
 #include "bit_vectors.hpp"
 #include "vectors.hpp"
 #include "bp_support.hpp"
+#include "csa_iterators.hpp"
 #include <fstream>
-#include <chrono>
-
-using timer = std::chrono::high_resolution_clock;
 
 namespace sdsl {
 
@@ -16,7 +14,8 @@ template<class t_csa = csa_wt<>,
          class t_s_support = bp_support_sada<>,
          class t_b = sd_vector<>,
          class t_depth = dac_vector<>,
-         class t_depth_mask = sd_vector<>
+         class t_depth_mask = sd_vector<>,
+         uint32_t t_delta = 0
          >
 class cst_fully_sds {
 public:
@@ -34,9 +33,9 @@ public:
     typedef t_depth                                       depth_type;
     typedef t_depth_mask                                  depth_mask_type;
     typedef typename t_depth_mask::rank_1_type            depth_mask_rank_1_type;
-    typedef cst_sada<t_csa, lcp_wt<> >                    construction_cst_type; // CST used for the construction of the FCST
-    typedef csa_iterator<csa_type>                        csa_iterator_type;
+    typedef cst_sada<t_csa, lcp_wt<> >                    construction_cst_type;
 
+    typedef typename t_csa::alphabet_category             alphabet_category;
     typedef cst_tag                                       index_category;
 
 private:
@@ -51,137 +50,69 @@ private:
     depth_mask_type                m_depth_mask;
     depth_mask_rank_1_type         m_depth_mask_rank1;
 
+    void copy(const cst_fully_sds& cst) {
+        m_delta     = cst.m_delta;
+        m_csa       = cst.m_csa;
+        m_s         = cst.m_s;
+        m_s_support = cst.m_s_support;
+        m_s_support.set_vector(&m_s);
+        m_b         = cst.m_b;
+        m_b_select0 = cst.m_b_select0;
+        m_b_select0.set_vector(&m_b);
+        m_b_select1 = cst.m_b_select1;
+        m_b_select1.set_vector(&m_b);
+        m_depth     = cst.m_depth;
+        m_depth_mask = cst.m_depth_mask;
+        m_depth_mask_rank1 = cst.m_depth_mask_rank1;
+    }
+
 public:
     const size_type   &delta = m_delta;
     const csa_type    &csa = m_csa;
     const bit_vector  &s = m_s;
     const b_type      &b = m_b;
 
-    static cst_fully_sds construct(const std::string &file, size_type delta) {
-        construction_cst_type cst;
-        sdsl::construct(cst, file, 1);
-        return cst_fully_sds(cst, delta, false);
+//! Default constructor
+    cst_fully_sds() {}
+
+//! Copy constructor
+    cst_fully_sds(const cst_fully_sds &cst) {
+        copy(cst);
     }
 
-    static cst_fully_sds construct_im(const char *str, size_type delta) {
-        construction_cst_type cst;
-        sdsl::construct_im(cst, str, 1);
-        return cst_fully_sds(cst, delta, false);
+//! Move constructor
+    cst_fully_sds(cst_fully_sds &&cst) {
+        *this = std::move(cst);
     }
 
-    cst_fully_sds(const construction_cst_type &cst,
-                  size_type delta,
-                  bool verbose)
-    : m_delta(delta),
-      m_csa(cst.csa)
-    {
-        size_type delta_half = delta / 2;
+//! Construct CST from file_map
+    cst_fully_sds(cache_config &config);
 
-        bit_vector is_sampled(cst.nodes(), false);
-        size_type sample_count = 1;
-        bit_vector is_depth_sampled(cst.nodes(), false);
-        size_type depth_sample_count = 1;
+    size_type size() const {
+        return m_csa.size();
+    }
 
-        // always sample root
-        is_sampled[cst.id(cst.root())] = true;
-        is_depth_sampled[cst.id(cst.root())] = true;
+    static size_type max_size() {
+        return t_csa::max_size();
+    }
 
-        std::chrono::time_point<std::chrono::high_resolution_clock> start;
-        if(verbose) {
-            start = timer::now();
+    bool empty() const {
+        return m_csa.empty();
+    }
+
+    void swap(cst_fully_sds &cst) {
+        if(this != &cst) {
+            std::swap(m_delta, cst.m_delta);
+            m_csa.swap(cst.m_csa);
+            m_s.swap(cst.m_s);
+            util::swap_support(m_s_support, cst.m_s_support, &m_s, &(cst.m_s));
+            m_b.swap(cst.m_b);
+            util::swap_support(m_b_select0, cst.m_b_select0, &m_b, &(cst.m_b));
+            util::swap_support(m_b_select1, cst.m_b_select1, &m_b, &(cst.m_b));
+            m_depth.swap(cst.m_depth);
+            m_depth_mask.swap(cst.m_depth_mask);
+            util::swap_support(m_depth_mask_rank1, cst.m_depth_mask_rank1, &m_depth_mask, &(cst.m_depth_mask));
         }
-
-        for(auto it = cst.begin(); it != cst.end(); ++it) {
-            if(it.visit() == 1 and cst.is_leaf(*it) == false) {
-                const auto node = *it;
-                const size_type d = cst.depth(node);
-                if(d % delta_half == 0) {
-                    auto v = node;
-                    for(size_type i = 0; i < delta_half; i++) {
-                        v = cst.sl(v);
-                    }
-                    const size_type id = cst.id(v);
-                    if(!is_sampled[id]) {
-                        is_sampled[id] = true;
-                        sample_count++;
-                    }
-                }
-
-                const size_type l = level(d);
-                if(d > delta_half * l && d % (delta_half * l) == 0 && level(d - delta_half * l) == l) {
-                    auto v = node;
-                    for(size_type i = 0; i < delta_half * l; i++) {
-                        v = cst.sl(v);
-                    }
-                    const size_type id = cst.id(v);
-                    if(!is_depth_sampled[id]) {
-                        is_depth_sampled[id] = true;
-                        depth_sample_count++;
-                    }
-                }
-            }
-        }
-
-        if(verbose) {
-            auto stop = timer::now();
-            std::cout << "Scanning of inner nodes: " << (stop - start) << std::endl;
-            start = timer::now();
-        }
-
-        bit_vector tmp_b;
-        int_vector<64> tmp_depth;
-        bit_vector tmp_depth_mask;
-        std::stack<bool> sampledStack;
-
-        m_s.resize(2 * sample_count);
-        tmp_b.resize(2 * sample_count + cst.size());
-        tmp_depth.resize(depth_sample_count);
-        tmp_depth_mask.resize(sample_count);
-
-        size_type s_idx = 0;
-        size_type b_idx = 0;
-        size_type depth_sample_idx = 0;
-        size_type sample_idx = 0;
-
-        for(auto it = cst.begin(); it != cst.end(); ++it) {
-            auto node = *it;
-            if(cst.is_leaf(node)) {
-                tmp_b[b_idx++] = 0;
-            } else {
-                if(it.visit() == 1) {
-                    sampledStack.push(is_sampled[cst.id(node)]);
-                    if(sampledStack.top()) {
-                        m_s[s_idx++] = 1;
-                        tmp_b[b_idx++] = 1;
-                        if(is_depth_sampled[cst.id(node)]) {
-                            tmp_depth[depth_sample_idx++] = cst.depth(node) / delta_half;
-                            tmp_depth_mask[sample_idx++] = 1;
-                        } else {
-                            tmp_depth_mask[sample_idx++] = 0;
-                        }
-                    }
-                } else {
-                    if(sampledStack.top()) {
-                        m_s[s_idx++] = 0;
-                        tmp_b[b_idx++] = 1;
-                    }
-                    sampledStack.pop();
-                }
-            }
-        }
-
-        if(verbose) {
-            auto stop = timer::now();
-            std::cout << "Sampling: " << (stop - start) << std::endl;
-        }
-
-        util::init_support(m_s_support, &m_s);
-        m_b = b_type(tmp_b);
-        util::init_support(m_b_select0, &m_b);
-        util::init_support(m_b_select1, &m_b);
-        m_depth = depth_type(tmp_depth);
-        m_depth_mask = depth_mask_type(tmp_depth_mask);
-        util::init_support(m_depth_mask_rank1, &m_depth_mask);
     }
 
     const_iterator begin() const {
@@ -193,6 +124,35 @@ public:
 
     const_iterator end() const {
         return const_iterator(this, root(), true, false);
+    }
+
+//! Copy Assignment Operator.
+    cst_fully_sds& operator=(const cst_fully_sds &cst) {
+        if(this != &cst) {
+            copy(cst);
+        }
+        return *this;
+    }
+
+//! Move Assignment Operator.
+    cst_fully_sds& operator=(cst_fully_sds &&cst) {
+        if(this != &cst) {
+            m_delta     = cst.m_delta;
+            m_csa       = std::move(cst.m_csa);
+            m_s         = std::move(cst.m_s);
+            m_s_support = std::move(cst.m_s_support);
+            m_s_support.set_vector(&m_s);
+            m_b         = std::move(cst.m_b);
+            m_b_select0 = std::move(cst.m_b_select0);
+            m_b_select0.set_vector(&m_b);
+            m_b_select1 = std::move(cst.m_b_select1);
+            m_b_select1.set_vector(&m_b);
+            m_depth     = std::move(cst.m_depth);
+            m_depth_mask = std::move(cst.m_depth_mask);
+            m_depth_mask_rank1 = std::move(cst.m_depth_mask_rank1);
+            m_depth_mask_rank1.set_vector(&m_depth_mask);
+        }
+        return *this;
     }
 
 //! Serialize to a stream.
@@ -626,10 +586,6 @@ public:
         return m_csa.text[m_csa[v.first] + d - 1];
     }
 
-    size_type size() const {
-        return m_csa.size();
-    }
-
 //! Get the number of nodes in the sampled tree.
         /*!
          * \return The number of nodes in the sampled tree.
@@ -649,6 +605,125 @@ public:
         return res;
     }
 };
+
+template<class t_csa, class t_s_support, class t_b, class t_depth, class t_depth_mask, uint32_t t_delta>
+cst_fully_sds<t_csa, t_s_support, t_b, t_depth, t_depth_mask, t_delta>::cst_fully_sds(cache_config &config) {
+    cst_sada<csa_type, lcp_wt<> > cst(config);
+
+    if(t_delta > 0) {
+        m_delta = t_delta;
+    } else {
+        const size_type n = cst.size();
+        if(n >= 3) {
+            m_delta = (bits::hi(n-1)+1) * (bits::hi(bits::hi(n-1))+1);
+        } else {
+            m_delta = 2;
+        }
+    }
+
+    size_type delta_half = m_delta / 2;
+
+    bit_vector is_sampled(cst.nodes(), false);
+    size_type sample_count = 1;
+    bit_vector is_depth_sampled(cst.nodes(), false);
+    size_type depth_sample_count = 1;
+
+    // always sample root
+    is_sampled[cst.id(cst.root())] = true;
+    is_depth_sampled[cst.id(cst.root())] = true;
+
+    {
+        auto event = memory_monitor::event("scan-nodes");
+        for(auto it = cst.begin(); it != cst.end(); ++it) {
+            if(it.visit() == 1 and cst.is_leaf(*it) == false) {
+                const auto node = *it;
+                const size_type d = cst.depth(node);
+                if(d % delta_half == 0) {
+                    auto v = node;
+                    for(size_type i = 0; i < delta_half; i++) {
+                        v = cst.sl(v);
+                    }
+                    const size_type id = cst.id(v);
+                    if(!is_sampled[id]) {
+                        is_sampled[id] = true;
+                        sample_count++;
+                    }
+                }
+
+                const size_type l = level(d);
+                if(d > delta_half * l && d % (delta_half * l) == 0 && level(d - delta_half * l) == l) {
+                    auto v = node;
+                    for(size_type i = 0; i < delta_half * l; i++) {
+                        v = cst.sl(v);
+                    }
+                    const size_type id = cst.id(v);
+                    if(!is_depth_sampled[id]) {
+                        is_depth_sampled[id] = true;
+                        depth_sample_count++;
+                    }
+                }
+            }
+        }
+    }
+
+    bit_vector tmp_b;
+    int_vector<64> tmp_depth;
+    bit_vector tmp_depth_mask;
+    std::stack<bool> sampledStack;
+
+    m_s.resize(2 * sample_count);
+    tmp_b.resize(2 * sample_count + cst.size());
+    tmp_depth.resize(depth_sample_count);
+    tmp_depth_mask.resize(sample_count);
+
+    {
+        auto event = memory_monitor::event("node-sampling");
+
+        size_type s_idx = 0;
+        size_type b_idx = 0;
+        size_type depth_sample_idx = 0;
+        size_type sample_idx = 0;
+
+        for(auto it = cst.begin(); it != cst.end(); ++it) {
+            auto node = *it;
+            if(cst.is_leaf(node)) {
+                tmp_b[b_idx++] = 0;
+            } else {
+                if(it.visit() == 1) {
+                    sampledStack.push(is_sampled[cst.id(node)]);
+                    if(sampledStack.top()) {
+                        m_s[s_idx++] = 1;
+                        tmp_b[b_idx++] = 1;
+                        if(is_depth_sampled[cst.id(node)]) {
+                            tmp_depth[depth_sample_idx++] = cst.depth(node) / delta_half;
+                            tmp_depth_mask[sample_idx++] = 1;
+                        } else {
+                            tmp_depth_mask[sample_idx++] = 0;
+                        }
+                    }
+                } else {
+                    if(sampledStack.top()) {
+                        m_s[s_idx++] = 0;
+                        tmp_b[b_idx++] = 1;
+                    }
+                    sampledStack.pop();
+                }
+            }
+        }
+    }
+
+    {
+        auto event = memory_monitor::event("ss-depth");
+        m_csa = std::move(cst.csa);
+        util::init_support(m_s_support, &m_s);
+        m_b = b_type(tmp_b);
+        util::init_support(m_b_select0, &m_b);
+        util::init_support(m_b_select1, &m_b);
+        m_depth = depth_type(tmp_depth);
+        m_depth_mask = depth_mask_type(tmp_depth_mask);
+        util::init_support(m_depth_mask_rank1, &m_depth_mask);
+    }
+}
 
 template<class t_csa,
          class t_s_support,

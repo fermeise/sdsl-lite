@@ -4,17 +4,10 @@
 
 using namespace sdsl;
 
-template<typename t_cst>
-class CstFullyWhiteboxTest : public ::testing::Test {
-};
+TEST(CstFullyWhiteboxTest, LsaLeafTest) {
+    cst_fully<csa_wt<>, bp_support_sada<>, sd_vector<>, dac_vector<>, 4, true> fcst;
 
-typedef ::testing::Types<cst_fully<> > WhiteboxTestTypes;
-TYPED_TEST_CASE(CstFullyWhiteboxTest, WhiteboxTestTypes);
-
-TYPED_TEST(CstFullyWhiteboxTest, LsaLeafTest) {
-    typedef TypeParam cst_type;
-
-    cst_type fcst = cst_type::construct_im("abbbab", 4, true);
+    construct_im(fcst, "abbbab", 1);
 
     // sampled tree should look like (0 1 2 (3) (4) 5 6)
     EXPECT_EQ(0, fcst.lsa_leaf(0));
@@ -26,10 +19,10 @@ TYPED_TEST(CstFullyWhiteboxTest, LsaLeafTest) {
     EXPECT_EQ(0, fcst.lsa_leaf(6));
 }
 
-TYPED_TEST(CstFullyWhiteboxTest, LsaLeafTest2) {
-    typedef TypeParam cst_type;
+TEST(CstFullyWhiteboxTest, LsaLeafTest2) {
+    cst_fully<csa_wt<>, bp_support_sada<>, sd_vector<>, dac_vector<>, 4, true> fcst;
 
-    cst_type fcst = cst_type::construct_im("Mississippi", 4, true);
+    construct_im(fcst, "Mississippi", 1);
 
     // sampled tree should look like (0 1 (2) 3 (4) 5 6 (7) ((8) 9) 10 (11))
     EXPECT_EQ(0, fcst.lsa_leaf(0));
@@ -46,10 +39,10 @@ TYPED_TEST(CstFullyWhiteboxTest, LsaLeafTest2) {
     EXPECT_EQ(11, fcst.lsa_leaf(11));
 }
 
-TYPED_TEST(CstFullyWhiteboxTest, LsaLeafTest3) {
-    typedef TypeParam cst_type;
+TEST(CstFullyWhiteboxTest, LsaLeafTest3) {
+    cst_fully<csa_wt<>, bp_support_sada<>, sd_vector<>, dac_vector<>, 2, true> fcst;
 
-    cst_type fcst = cst_type::construct_im("Mississippi", 2, true);
+    construct_im(fcst, "Mississippi", 1);
 
     // sampled tree should look like ((0)1((2)(3)(4)(5))(6)(7)((8)(9))((10)(11)))
     EXPECT_EQ(1, fcst.lsa_leaf(0));
@@ -66,10 +59,10 @@ TYPED_TEST(CstFullyWhiteboxTest, LsaLeafTest3) {
     EXPECT_EQ(26, fcst.lsa_leaf(11));
 }
 
-TYPED_TEST(CstFullyWhiteboxTest, LsaLeafTest4) {
-    typedef TypeParam cst_type;
+TEST(CstFullyWhiteboxTest, LsaLeafTest4) {
+    cst_fully<csa_wt<>, bp_support_sada<>, sd_vector<>, dac_vector<>, 4, false> fcst;
 
-    cst_type fcst = cst_type::construct_im("Mississippi", 4);
+    construct_im(fcst, "Mississippi", 1);
 
     // sampled tree should look like (0 1 2 3 4 5 6 7 (8 9) 10 11)
     EXPECT_EQ(0, fcst.lsa_leaf(0));
@@ -86,22 +79,22 @@ TYPED_TEST(CstFullyWhiteboxTest, LsaLeafTest4) {
     EXPECT_EQ(0, fcst.lsa_leaf(11));
 }
 
-TYPED_TEST(CstFullyWhiteboxTest, SampledNodeTest) {
-    typedef TypeParam cst_type;
-    typedef typename cst_type::node_type node_type;
+TEST(CstFullyWhiteboxTest, SampledNodeTest) {
+    cst_fully<csa_wt<>, bp_support_sada<>, sd_vector<>, dac_vector<>, 4, true> fcst;
+    typedef typename decltype(fcst)::node_type node_type;
 
-    cst_type fcst = cst_type::construct_im("abbbab", 4, true);
+    construct_im(fcst, "abbbab", 1);
 
     EXPECT_EQ(node_type(0, 6), fcst.sampled_node(0));
     EXPECT_EQ(node_type(3, 3), fcst.sampled_node(1));
     EXPECT_EQ(node_type(4, 4), fcst.sampled_node(3));
 }
 
-TYPED_TEST(CstFullyWhiteboxTest, SampledNodeTest2) {
-    typedef TypeParam cst_type;
-    typedef typename cst_type::node_type node_type;
+TEST(CstFullyWhiteboxTest, SampledNodeTest2) {
+    cst_fully<csa_wt<>, bp_support_sada<>, sd_vector<>, dac_vector<>, 4, true> fcst;
+    typedef typename decltype(fcst)::node_type node_type;
 
-    cst_type fcst = cst_type::construct_im("Mississippi", 4, true);
+    construct_im(fcst, "Mississippi", 1);
 
     EXPECT_EQ(node_type(0, 11), fcst.sampled_node(0));
     EXPECT_EQ(node_type(2, 2), fcst.sampled_node(1));
@@ -111,30 +104,30 @@ TYPED_TEST(CstFullyWhiteboxTest, SampledNodeTest2) {
     EXPECT_EQ(node_type(8, 8), fcst.sampled_node(8));
 }
 
-TYPED_TEST(CstFullyWhiteboxTest, SampledNodeTest3) {
-    typedef TypeParam cst_type;
-    typedef typename cst_type::node_type node_type;
+TEST(CstFullyWhiteboxTest, SampledNodeTest3) {
+    cst_fully<csa_wt<>, bp_support_sada<>, sd_vector<>, dac_vector<>, 4, false> fcst;
+    typedef typename decltype(fcst)::node_type node_type;
 
-    cst_type fcst = cst_type::construct_im("Mississippi", 4);
+    construct_im(fcst, "Mississippi", 1);
 
     EXPECT_EQ(node_type(0, 11), fcst.sampled_node(0));
     EXPECT_EQ(node_type(8, 9), fcst.sampled_node(1));
 }
 
-TYPED_TEST(CstFullyWhiteboxTest, SampledDepthTest) {
-    typedef TypeParam cst_type;
+TEST(CstFullyWhiteboxTest, SampledDepthTest) {
+    cst_fully<csa_wt<>, bp_support_sada<>, sd_vector<>, dac_vector<>, 4, true> fcst;
 
-    cst_type fcst = cst_type::construct_im("abbbab", 4, true);
+    construct_im(fcst, "abbbab", 1);
 
     EXPECT_EQ(0, fcst.depth(0));
     EXPECT_EQ(2, fcst.depth(1));
     EXPECT_EQ(4, fcst.depth(3));
 }
 
-TYPED_TEST(CstFullyWhiteboxTest, SampledDepthTest2) {
-    typedef TypeParam cst_type;
+TEST(CstFullyWhiteboxTest, SampledDepthTest2) {
+    cst_fully<csa_wt<>, bp_support_sada<>, sd_vector<>, dac_vector<>, 4, true> fcst;
 
-    cst_type fcst = cst_type::construct_im("Mississippi", 4, true);
+    construct_im(fcst, "Mississippi", 1);
 
     EXPECT_EQ(0, fcst.depth(0));
     EXPECT_EQ(2, fcst.depth(1));
@@ -144,19 +137,19 @@ TYPED_TEST(CstFullyWhiteboxTest, SampledDepthTest2) {
     EXPECT_EQ(6, fcst.depth(8));
 }
 
-TYPED_TEST(CstFullyWhiteboxTest, SampledDepthTest3) {
-    typedef TypeParam cst_type;
+TEST(CstFullyWhiteboxTest, SampledDepthTest3) {
+    cst_fully<csa_wt<>, bp_support_sada<>, sd_vector<>, dac_vector<>, 4, false> fcst;
 
-    cst_type fcst = cst_type::construct_im("Mississippi", 4);
+    construct_im(fcst, "Mississippi", 1);
 
     EXPECT_EQ(0, fcst.depth(0));
     EXPECT_EQ(2, fcst.depth(1));
 }
 
-TYPED_TEST(CstFullyWhiteboxTest, LCSATest) {
-    typedef TypeParam cst_type;
+TEST(CstFullyWhiteboxTest, LCSATest) {
+    cst_fully<csa_wt<>, bp_support_sada<>, sd_vector<>, dac_vector<>, 4, true> fcst;
 
-    cst_type fcst = cst_type::construct_im("abbbab", 4, true);
+    construct_im(fcst, "abbbab", 1);
 
     EXPECT_EQ(0, fcst.lcsa(0, 0));
     EXPECT_EQ(1, fcst.lcsa(1, 1));
@@ -166,10 +159,10 @@ TYPED_TEST(CstFullyWhiteboxTest, LCSATest) {
     EXPECT_EQ(0, fcst.lcsa(1, 3));
 }
 
-TYPED_TEST(CstFullyWhiteboxTest, LCSATest2) {
-    typedef TypeParam cst_type;
+TEST(CstFullyWhiteboxTest, LCSATest2) {
+    cst_fully<csa_wt<>, bp_support_sada<>, sd_vector<>, dac_vector<>, 4, true> fcst;
 
-    cst_type fcst = cst_type::construct_im("Mississippi", 4, true);
+    construct_im(fcst, "Mississippi", 1);
 
     EXPECT_EQ(0, fcst.lcsa(0, 0));
     EXPECT_EQ(1, fcst.lcsa(1, 1));
@@ -186,20 +179,20 @@ TYPED_TEST(CstFullyWhiteboxTest, LCSATest2) {
     EXPECT_EQ(7, fcst.lcsa(8, 7));
 }
 
-TYPED_TEST(CstFullyWhiteboxTest, LCSATest3) {
-    typedef TypeParam cst_type;
+TEST(CstFullyWhiteboxTest, LCSATest3) {
+    cst_fully<csa_wt<>, bp_support_sada<>, sd_vector<>, dac_vector<>, 4, true> fcst;
 
-    cst_type fcst = cst_type::construct_im(" as far as I c as j as fai", 4, true);
+    construct_im(fcst, " as far as I c as j as fai", 1);
 
     // sampled tree should look like (01(2)(3)4567(8)(9)(10)11(12)131415(16)(17)((18)19)(20)2122((23)((24)25)26))
     EXPECT_EQ(fcst.lcsa(fcst.lsa_leaf(23), fcst.lsa_leaf(24)),
               fcst.lcsa(fcst.lcsa(fcst.lsa_leaf(23), fcst.lsa_leaf(24)), fcst.lsa_leaf(24)));
 }
 
-TYPED_TEST(CstFullyWhiteboxTest, LCSATest4) {
-    typedef TypeParam cst_type;
+TEST(CstFullyWhiteboxTest, LCSATest4) {
+    cst_fully<csa_wt<>, bp_support_sada<>, sd_vector<>, dac_vector<>, 4, false> fcst;
 
-    cst_type fcst = cst_type::construct_im("Mississippi", 4);
+    construct_im(fcst, "Mississippi", 1);
 
     EXPECT_EQ(0, fcst.lcsa(0, 0));
     EXPECT_EQ(0, fcst.lcsa(0, 1));
@@ -211,14 +204,25 @@ template<typename t_cst>
 class CstFullyBlackboxTest : public ::testing::Test {
 };
 
-typedef ::testing::Types<cst_fully<>, cst_fully_sds<> > BlackboxTestTypes;
+typedef ::testing::Types<
+    cst_fully<csa_wt<>, bp_support_sada<>, sd_vector<>, dac_vector<>, 2, false>,
+    cst_fully<csa_wt<>, bp_support_sada<>, sd_vector<>, dac_vector<>, 4, false>,
+    cst_fully<csa_wt<>, bp_support_sada<>, sd_vector<>, dac_vector<>, 6, false>,
+    cst_fully<csa_wt<>, bp_support_sada<>, sd_vector<>, dac_vector<>, 8, false>,
+    cst_fully<csa_wt<>, bp_support_sada<>, sd_vector<>, dac_vector<>, 10, false>,
+    cst_fully_sds<csa_wt<>, bp_support_sada<>, sd_vector<>, dac_vector<>, sd_vector<>, 4>,
+    cst_fully_blind<csa_wt<>, bp_support_sada<>, sd_vector<>, dac_vector<>, 4, false>
+    > BlackboxTestTypes;
+typedef cst_sada<> ref_cst_type;
+
 TYPED_TEST_CASE(CstFullyBlackboxTest, BlackboxTestTypes);
 
 TYPED_TEST(CstFullyBlackboxTest, DepthTest) {
     typedef TypeParam cst_type;
     typedef typename cst_type::node_type node_type;
 
-    cst_type fcst = cst_type::construct_im("abbbab", 4);
+    cst_type fcst;
+    construct_im(fcst, "abbbab", 1);
 
     EXPECT_EQ(1, fcst.depth(node_type(0, 0)));
     EXPECT_EQ(0, fcst.depth(node_type(0, 3)));
@@ -242,7 +246,8 @@ TYPED_TEST(CstFullyBlackboxTest, LCATest) {
     typedef TypeParam cst_type;
     typedef typename cst_type::node_type node_type;
 
-    cst_type fcst = cst_type::construct_im("abbbab", 4);
+    cst_type fcst;
+    construct_im(fcst, "abbbab", 1);
 
     auto lca = [&](size_t l, size_t r) { return fcst.lca(node_type(l, l), node_type(r, r)); };
 
@@ -268,7 +273,8 @@ TYPED_TEST(CstFullyBlackboxTest, LCATest2) {
     typedef TypeParam cst_type;
     typedef typename cst_type::node_type node_type;
 
-    cst_type fcst = cst_type::construct_im("Mississippi", 4);
+    cst_type fcst;
+    construct_im(fcst, "Mississippi", 1);
 
     auto lca = [&](size_t l, size_t r) { return fcst.lca(node_type(l, l), node_type(r, r)); };
 
@@ -302,7 +308,8 @@ TYPED_TEST(CstFullyBlackboxTest, SuffixLinkTest) {
     typedef TypeParam cst_type;
     typedef typename cst_type::node_type node_type;
 
-    cst_type fcst = cst_type::construct_im("Mississippi", 4);
+    cst_type fcst;
+    construct_im(fcst, "Mississippi", 1);
 
     EXPECT_EQ(node_type( 5,  5), fcst.sl(node_type( 1,  1)));
     EXPECT_EQ(node_type(11, 11), fcst.sl(node_type( 5,  5)));
@@ -330,7 +337,8 @@ TYPED_TEST(CstFullyBlackboxTest, ParentTest) {
     typedef TypeParam cst_type;
     typedef typename cst_type::node_type node_type;
 
-    cst_type fcst = cst_type::construct_im("Mississippi", 4);
+    cst_type fcst;
+    construct_im(fcst, "Mississippi", 1);
 
     EXPECT_EQ(node_type( 0, 11), fcst.parent(node_type( 0,  0)));
     EXPECT_EQ(node_type( 0, 11), fcst.parent(node_type( 1,  1)));
@@ -358,7 +366,8 @@ TYPED_TEST(CstFullyBlackboxTest, ChildTest) {
     typedef TypeParam cst_type;
     typedef typename cst_type::node_type node_type;
 
-    cst_type fcst = cst_type::construct_im("Mississippi", 4);
+    cst_type fcst;
+    construct_im(fcst, "Mississippi", 1);
 
     EXPECT_EQ(node_type( 0,  0), fcst.child(node_type( 0, 11), '\0'));
     EXPECT_EQ(node_type( 1,  1), fcst.child(node_type( 0, 11), 'M'));
@@ -386,7 +395,8 @@ TYPED_TEST(CstFullyBlackboxTest, SelectChildTest) {
     typedef TypeParam cst_type;
     typedef typename cst_type::node_type node_type;
 
-    cst_type fcst = cst_type::construct_im("Mississippi", 4);
+    cst_type fcst;
+    construct_im(fcst, "Mississippi", 1);
 
     EXPECT_EQ(node_type( 0,  0), fcst.select_child(node_type( 0, 11), 1));
     EXPECT_EQ(node_type( 1,  1), fcst.select_child(node_type( 0, 11), 2));
@@ -419,7 +429,8 @@ TYPED_TEST(CstFullyBlackboxTest, SiblingTest) {
     typedef TypeParam cst_type;
     typedef typename cst_type::node_type node_type;
 
-    cst_type fcst = cst_type::construct_im("Mississippi", 4);
+    cst_type fcst;
+    construct_im(fcst, "Mississippi", 1);
 
     EXPECT_EQ(node_type( 1,  1), fcst.sibling(node_type( 0,  0)));
     EXPECT_EQ(node_type( 2,  5), fcst.sibling(node_type( 1,  1)));
@@ -445,7 +456,8 @@ TYPED_TEST(CstFullyBlackboxTest, EdgeTest) {
     typedef TypeParam cst_type;
     typedef typename cst_type::node_type node_type;
 
-    cst_type fcst = cst_type::construct_im("Mississippi", 4);
+    cst_type fcst;
+    construct_im(fcst, "Mississippi", 1);
 
     EXPECT_EQ('i', fcst.edge(node_type( 2,  5), 1));
     EXPECT_EQ('p', fcst.edge(node_type( 6,  7), 1));
@@ -492,34 +504,33 @@ And that has made all the difference.";
 TYPED_TEST(CstFullyBlackboxTest, IteratorTest) {
     typedef TypeParam cst_type;
 
-    typename cst_type::construction_cst_type cst;
+    ref_cst_type cst;
     construct_im(cst, road_not_taken, 1);
 
-    for(int delta = 2; delta <= 40; delta++) {
-        cst_type fcst(cst, delta, false);
+    cst_type fcst;
+    construct_im(fcst, road_not_taken, 1);
 
-        auto it = fcst.begin();
-        auto cst_it = cst.begin();
+    auto it = fcst.begin();
+    auto cst_it = cst.begin();
 
-        while(it != fcst.end() && cst_it != cst.end()) {
-            auto node = *it;
-            auto sl = fcst.sl(node);
-            auto parent = fcst.parent(node);
-            auto cst_node = *cst_it;
-            auto cst_ls = cst.sl(cst_node);
-            auto cst_parent = cst.parent(cst_node);
+    while(it != fcst.end() && cst_it != cst.end()) {
+        auto node = *it;
+        auto sl = fcst.sl(node);
+        auto parent = fcst.parent(node);
+        auto cst_node = *cst_it;
+        auto cst_ls = cst.sl(cst_node);
+        auto cst_parent = cst.parent(cst_node);
 
-            EXPECT_EQ(cst.lb(cst_node), fcst.lb(node));
-            EXPECT_EQ(cst.rb(cst_node), fcst.rb(node));
-            EXPECT_EQ(cst.depth(cst_node), fcst.depth(node));
-            EXPECT_EQ(cst.lb(cst_ls), fcst.lb(sl));
-            EXPECT_EQ(cst.rb(cst_ls), fcst.rb(sl));
-            EXPECT_EQ(cst.lb(cst_parent), fcst.lb(parent));
-            EXPECT_EQ(cst.rb(cst_parent), fcst.rb(parent));
+        ASSERT_EQ(cst.lb(cst_node), fcst.lb(node));
+        ASSERT_EQ(cst.rb(cst_node), fcst.rb(node));
+        ASSERT_EQ(cst.depth(cst_node), fcst.depth(node));
+        ASSERT_EQ(cst.lb(cst_ls), fcst.lb(sl));
+        ASSERT_EQ(cst.rb(cst_ls), fcst.rb(sl));
+        ASSERT_EQ(cst.lb(cst_parent), fcst.lb(parent));
+        ASSERT_EQ(cst.rb(cst_parent), fcst.rb(parent));
 
-            ++it;
-            ++cst_it;
-        }
+        ++it;
+        ++cst_it;
     }
 }
 
@@ -544,10 +555,11 @@ TYPED_TEST(CstFullyBlackboxTest, IteratorTest2) {
 
     const std::string text = fib(20);
 
-    typename cst_type::construction_cst_type cst;
+    ref_cst_type cst;
     construct_im(cst, text.c_str(), 1);
 
-    cst_type fcst(cst, 4, false);
+    cst_type fcst;
+    construct_im(fcst, text.c_str(), 1);
 
     auto it = fcst.begin();
     auto cst_it = cst.begin();
@@ -557,9 +569,9 @@ TYPED_TEST(CstFullyBlackboxTest, IteratorTest2) {
             auto node = *it;
             auto cst_node = *cst_it;
 
-            EXPECT_EQ(cst.lb(cst_node), fcst.lb(node));
-            EXPECT_EQ(cst.rb(cst_node), fcst.rb(node));
-            EXPECT_EQ(cst.depth(cst_node), fcst.depth(node));
+            ASSERT_EQ(cst.lb(cst_node), fcst.lb(node));
+            ASSERT_EQ(cst.rb(cst_node), fcst.rb(node));
+            ASSERT_EQ(cst.depth(cst_node), fcst.depth(node));
         }
         ++it;
         ++cst_it;

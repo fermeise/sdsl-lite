@@ -32,6 +32,7 @@ struct iv_tag {}; // int_vector tag
 struct csa_tag {}; // compressed suffix array (CSAs) tag
 struct cst_tag {}; // compressed suffix tree (CST) tag
 struct wt_tag {};  // wavelet tree tag
+struct bcst_tag {};// binary CST tag
 
 struct psi_tag {}; // tag for CSAs based on the psi function
 struct lf_tag {}; // tag for CSAs based on the LF function

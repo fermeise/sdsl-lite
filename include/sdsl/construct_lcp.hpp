@@ -181,6 +181,103 @@ void construct_lcp_PHI(cache_config& config)
 }
 
 
+//! Construct the BLCP array for text over byte- or integer-alphabet.
+/*!	The algorithm computes the blcp (bitwise lcp) array and stores it to disk.
+ *  \pre Text and Suffix array exist in the cache. Keys:
+ *         * conf::KEY_TEXT for t_width=8  or conf::KEY_TEXT_INT for t_width=0
+ *         * conf::KEY_SA
+ *  \post LCP array exist in the cache. Key
+ *         * conf::KEY_BLCP
+ *         * conf::KEY_LCP
+ *  \par Time complexity
+ *         \f$ \Order{n} \f$
+ *  \par Space complexity
+ *         \f$ n( \log \sigma + \log \n ) \f$ bits
+ *  \par Reference
+ *         Juha Kärkkäinen, Giovanni Manzini, Simon J. Puglisi:
+ *         Permuted Longest-Common-Prefix Array.
+ *         CPM 2009: 181-192
+ */
+template<uint8_t t_width, class t_alphabet>
+void construct_blcp_PHI(cache_config& config,
+                        typename t_alphabet::char2comp_type& char2comp,
+                        typename t_alphabet::sigma_type& sigma)
+{
+    static_assert(t_width == 0 or t_width == 8 , "construct_blcp_PHI: width must be `0` for integer alphabet and `8` for byte alphabet");
+    typedef int_vector<>::size_type size_type;
+    typedef int_vector<t_width> text_type;
+    const char* KEY_TEXT = key_text_trait<t_width>::KEY_TEXT;
+    int_vector_buffer<> sa_buf(cache_file_name(conf::KEY_SA, config));
+    size_type n = sa_buf.size();
+    const size_type width = bits::hi(sigma-1)+1;
+
+    assert(n > 0);
+    if (1 == n) {  // Handle special case: Input only the sentinel character.
+        int_vector<> lcp(1, 0);
+        store_to_cache(lcp, conf::KEY_BLCP, config);
+        store_to_cache(lcp, conf::KEY_LCP, config);
+        return;
+    }
+
+//	(1) Calculate PHI (stored in array plcp)
+    int_vector<> plcp(n, 0, sa_buf.width() + bits::hi(width-1)+1);
+    for (size_type i=0, sai_1 = 0; i < n; ++i) {
+        size_type sai = sa_buf[i];
+        plcp[ sai ] = sai_1;
+        sai_1 = sai;
+    }
+
+//  (2) Load text from disk
+    text_type text;
+    load_from_cache(text, KEY_TEXT, config);
+
+//  (3) Calculate permuted BLCP array (text order), called PBLCP
+    size_type max_blcp = 0;
+    for (size_type i=0, l=0, k=0; i < n-1; ++i) {
+        size_type phii = plcp[i];
+        while (text[i+l] == text[phii+l]) {
+            ++l;
+            k = 0;
+        }
+        const typename t_alphabet::comp_char_type c_i = char2comp[text[i+l]];
+        const typename t_alphabet::comp_char_type c_phii = char2comp[text[phii+l]];
+        while ((c_i & (1 << (width - k - 1))) == (c_phii & (1 << (width - k - 1)))) {
+            ++k;
+        }
+
+        plcp[i] = l * width + k;
+        max_blcp = std::max(max_blcp, l * width + k);
+        if (l) {
+            --l;
+        } else {
+            k = 0;
+        }
+    }
+    util::clear(text);
+    uint8_t lcp_width = bits::hi(max_blcp / width)+1;
+    uint8_t blcp_width = bits::hi(max_blcp)+1;
+
+//	(4) Transform PBLCP into BLCP and LCP
+    std::string blcp_file = cache_file_name(conf::KEY_BLCP, config);
+    std::string lcp_file = cache_file_name(conf::KEY_LCP, config);
+    size_type buffer_size = 1000000; // buffer_size is a multiple of 8!
+    int_vector_buffer<> blcp_buf(blcp_file, std::ios::out, buffer_size, blcp_width);   // open buffer for blcp
+    int_vector_buffer<> lcp_buf(lcp_file, std::ios::out, buffer_size, lcp_width);   // open buffer for lcp
+    blcp_buf[0] = 0;
+    lcp_buf[0] = 0;
+    sa_buf.buffersize(buffer_size);
+    for (size_type i=1; i < n; ++i) {
+        size_type sai = sa_buf[i];
+        blcp_buf[i] = plcp[sai];
+        lcp_buf[i] = plcp[sai] / width;
+    }
+    blcp_buf.close();
+    lcp_buf.close();
+    register_cache_file(conf::KEY_LCP, config);
+    register_cache_file(conf::KEY_BLCP, config);
+}
+
+
 //! Construct the LCP array (only for byte strings)
 /*!	The algorithm computes the lcp array and stores it to disk.
  *  \param config	Reference to cache configuration

@@ -73,6 +73,7 @@ typename t_csa::size_type get_char_pos(typename t_csa::size_type idx, typename t
 #include "cst_sada.hpp"
 #include "cst_fully.hpp"
 #include "cst_fully_sds.hpp"
+#include "cst_fully_blind.hpp"
 
 #include "csa_bitcompressed.hpp"
 #include "int_vector.hpp"
