@@ -11,7 +11,7 @@
 namespace sdsl {
 
 template<class t_csa = csa_wt<>,
-         class t_s_support = bp_support_sada<>,
+         class t_bp_support = bp_support_sada<>,
          class t_b = sd_vector<>,
          class t_depth = dac_vector<>,
          uint32_t t_delta = 0,
@@ -27,11 +27,12 @@ public:
     typedef size_type                                       leaf_type; // Index of a leaf
     typedef size_type                                       bin_node_type; // Node in the sampled tree represented by its index in bp_bin
     typedef size_type                                       sampled_node_type; // Node in the sampled tree represented by its index in s
-    typedef t_s_support                                     s_support_type;
+    typedef t_bp_support                                    bp_bin_support_type;
     typedef t_b                                             b_type;
     typedef typename t_b::select_0_type                     b_select_0_type;
     typedef typename t_b::select_1_type                     b_select_1_type;
     typedef int_vector<>                                    pd_type;
+    typedef t_bp_support                                    s_support_type;
     typedef t_depth                                         depth_type;
     typedef cst_sada<t_csa, lcp_wt<> >                      construction_cst_type;
 
@@ -41,17 +42,17 @@ public:
 private:
     size_type                      m_delta;
     csa_type                       m_csa;
-    bit_vector                     m_bp_bin;
-    t_s_support                    m_bp_bin_support;
+    bit_vector                     m_bp_bin; // balanced parenthesis representation of the binary tree
+    bp_bin_support_type            m_bp_bin_support;
     b_type                         m_b;
     b_select_0_type                m_b_select0;
     b_select_1_type                m_b_select1;
-    pd_type                        m_pd;
-    bit_vector                     m_in_st;
-    bit_vector                     m_in_s;
+    pd_type                        m_pd; // Depth (mod log sigma) of nodes in the binary tree
+    bit_vector                     m_in_st; // For each opening parenthesis in bp_bin: 1 if the node is in the suffix tree, 0 if it is a pseudonode
+    bit_vector                     m_in_s; // For each parenthesis in bp_bin: 1 if the parenthesis is also in S, 0 otherwise
     bit_vector::rank_1_type        m_in_s_rank1;
     bit_vector::select_1_type      m_in_s_select1;
-    bit_vector                     m_s;
+    bit_vector                     m_s; // S, the original sampled suffix tree (no child sampling, no pseudo nodes)
     s_support_type                 m_s_support;
     depth_type                     m_depth;
 
@@ -770,6 +771,7 @@ cst_fully_blind<t_csa, t_s_support, t_b, t_depth, t_delta, t_sample_leaves>::cst
     is_sampled_s[cst.id(cst.root())] = true; // always sample root
     size_type sample_count_s = 1;
 
+    // 2a. Scan an mark leaves to be sampled
     if(t_sample_leaves) {
         auto event = memory_monitor::event("scan-leaves");
         for(auto it = csa_iterator_type::begin(cst.csa); it != csa_iterator_type::end(cst.csa); ++it) {
@@ -790,6 +792,7 @@ cst_fully_blind<t_csa, t_s_support, t_b, t_depth, t_delta, t_sample_leaves>::cst
         }
     }
 
+    // 2b. Scan an mark inner nodes to be sampled
     {
         auto event = memory_monitor::event("scan-nodes");
         for(auto it = cst.begin(); it != cst.end(); ++it) {
@@ -824,7 +827,7 @@ cst_fully_blind<t_csa, t_s_support, t_b, t_depth, t_delta, t_sample_leaves>::cst
         }
     }
 
-    // 3. Choose sampled pseudo-nodes
+    // 3. Choose sampled pseudo-nodes (so the sampled tree forms a binary tree)
     struct entry_type {
         entry_type(size_type _node_count, size_type _carry)
         : node_count(_node_count), carry(_carry) {}
@@ -840,17 +843,6 @@ cst_fully_blind<t_csa, t_s_support, t_b, t_depth, t_delta, t_sample_leaves>::cst
 
     for (auto it=cst_bin.begin(), end=cst_bin.end(), it2=cst.begin(), end2=cst.end(); it!=end; ++it) {
         bool in_cst = cst_bin.lb(*it) == cst.lb(*it2) && cst_bin.rb(*it) == cst.rb(*it2);
-
-        const size_type width = bits::hi(cst_bin.csa.sigma-1)+1;
-        bool in_cst_d = cst_bin.is_leaf(*it) || *it == cst_bin.root() || cst_bin.depth(*it) / width != cst_bin.depth(cst_bin.parent(*it)) / width;
-
-        if(in_cst != in_cst_d) {
-            auto p = cst_bin.parent(*it);
-            auto p2 = cst.parent(cst.lca(cst.select_leaf(cst_bin.lb(*it)), cst.select_leaf(cst_bin.rb(*it))));
-            std::cout << "[" << cst_bin.lb(*it) << ", " << cst_bin.rb(*it) << "] BIN_P = ["
-                << cst_bin.lb(p) << ", " << cst_bin.rb(p) << "] P = ["
-                << cst_bin.lb(p2) << ", " << cst_bin.rb(p2) << "" << std::endl;
-        }
 
         if(cst_bin.is_leaf(*it)) {
             if(in_cst && is_sampled[cst.id(*it2)]) {
@@ -881,7 +873,7 @@ cst_fully_blind<t_csa, t_s_support, t_b, t_depth, t_delta, t_sample_leaves>::cst
         }
     }
 
-    // 4. Create sampled tree
+    // 4. Create sampled tree data structures
     const size_type width = bits::hi(cst_bin.csa.sigma-1)+1;
 
     bit_vector tmp_b;
@@ -904,13 +896,8 @@ cst_fully_blind<t_csa, t_s_support, t_b, t_depth, t_delta, t_sample_leaves>::cst
     size_type s_idx = 0;
     size_type depth_idx = 0;
 
-    int step = 0;
     for (auto it=cst_bin.begin(), end=cst_bin.end(), it2=cst.begin(), end2=cst.end(); it!=end; ++it) {
         bool in_cst = cst_bin.lb(*it) == cst.lb(*it2) && cst_bin.rb(*it) == cst.rb(*it2);
-        if(step % 10 == 0) {
-            std::cout << "";
-        }
-        step++;
 
         if(it.visit() == 1 && is_sampled_bin[cst_bin.id(*it)]) {
             m_bp_bin[bp_bin_idx++] = 1;
@@ -918,9 +905,8 @@ cst_fully_blind<t_csa, t_s_support, t_b, t_depth, t_delta, t_sample_leaves>::cst
             if(cst_bin.is_leaf(*it)) {
                 m_pd[pd_idx++] = 0;
             } else {
-                //size_type d_rmq = cst_bin.lcp[cst_bin.rmq(cst_bin.lb(*it) + 1, cst_bin.rb(*it))];
-
                 size_type d = cst_bin.depth(*it);
+                // Dirty hack to get the depth of the node in bits
                 if(cst_bin.is_leaf(*it)) {
                     d *= width;
                 }
@@ -931,6 +917,7 @@ cst_fully_blind<t_csa, t_s_support, t_b, t_depth, t_delta, t_sample_leaves>::cst
                 m_in_s[in_s_idx++] = 1;
                 m_s[s_idx++] = 1;
                 size_type d = cst_bin.depth(*it);
+                // Dirty hack to get the depth of the node in characters
                 if(!cst_bin.is_leaf(*it) && *it != cst.root()) {
                     d /= width;
                 }
