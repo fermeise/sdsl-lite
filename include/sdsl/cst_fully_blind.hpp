@@ -744,7 +744,6 @@ cst_fully_blind<t_csa, t_s_support, t_b, t_depth, t_delta, t_sample_leaves>::cst
     // 1b. Construct SCT of binary tree
     rename(config.file_map[conf::KEY_LCP], config.file_map[conf::KEY_LCP] + ".tmp");
     rename(config.file_map[conf::KEY_BLCP], config.file_map[conf::KEY_LCP]);
-    // TODO: sct construction does not cope with LCP values larger than n
     cst_sada<t_csa, lcp_wt<> > cst_bin(config);
     rename(config.file_map[conf::KEY_LCP], config.file_map[conf::KEY_BLCP]);
     rename(config.file_map[conf::KEY_LCP] + ".tmp", config.file_map[conf::KEY_LCP]);
@@ -864,23 +863,11 @@ cst_fully_blind<t_csa, t_s_support, t_b, t_depth, t_delta, t_sample_leaves>::cst
                 stack.push(entry_type(0, 0));
             }
             if(2 == it.visit()) {
-                if(stack.top().node_count == 1 && stack.top().carry > 0) {
-                    is_sampled_bin[stack.top().carry] = 0;
-                    sample_count_bin--;
-                    stack.top().node_count = 2;
-                }
-
-                if(in_cst && is_sampled[cst.id(*it2)]) {
+                if(stack.top().node_count == 2 || (in_cst && is_sampled[cst.id(*it2)])) {
                     is_sampled_bin[cst_bin.id(*it)] = 1;
                     sample_count_bin++;
                     stack.pop();
                     stack.top().node_count++;
-                } else if(stack.top().node_count == 2) {
-                    is_sampled_bin[cst_bin.id(*it)] = 1;
-                    sample_count_bin++;
-                    stack.pop();
-                    stack.top().node_count++;
-                    //stack.top().carry = cst_bin.id(*it);
                 } else if(stack.top().node_count == 1) {
                     stack.pop();
                     stack.top().node_count++;
