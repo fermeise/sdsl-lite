@@ -6,10 +6,11 @@ using namespace sdsl;
 using namespace std::chrono;
 using timer = std::chrono::high_resolution_clock;
 
+typedef FCST_TYPE fcst_type;
 typedef CST_TYPE cst_type;
 
-const size_t BURST_SIZE = 1000;
-const size_t NUM_BURSTS = 10;
+const size_t NUM_REPETITIONS = 10000;
+const size_t BURST_SIZE = 100;
 
 std::default_random_engine &get_generator() {
     static std::default_random_engine generator(std::chrono::system_clock::now().time_since_epoch().count());
@@ -28,16 +29,13 @@ public:
       m_distribution(0, m_cst.size() - 2)
     {}
 
-    void reset() {
-    }
-
-    std::vector<typename t_cst::node_type> get_burst(size_t sample_count) {
+    std::vector<typename t_cst::node_type> get_data(size_t sample_count, size_t) {
         std::vector<typename t_cst::node_type> res;
         res.reserve(sample_count);
 
         for(size_t i = 0; i < sample_count; i++) {
             auto leaf = m_distribution(get_generator());
-            res.push_back(m_cst.lca(leaf, leaf + 1));
+            res.push_back(m_cst.lca(m_cst.select_leaf(leaf + 1), m_cst.select_leaf(leaf + 2)));
         }
 
         return res;
@@ -58,18 +56,18 @@ public:
       m_last_node(cst.root())
     {}
 
-    void reset() {
-        m_last_node = m_cst.root();
-    }
-
-    std::vector<typename t_cst::node_type> get_burst(size_t sample_count) {
+    std::vector<typename t_cst::node_type> get_data(size_t sample_count, size_t burst_size) {
         std::vector<typename t_cst::node_type> res;
         res.reserve(sample_count);
 
         for(size_t i = 0; i < sample_count; i++) {
+            if(i % burst_size == 0) {
+                m_last_node = m_cst.root();
+            }
+
             if(m_last_node == m_cst.root()) {
                 auto leaf = m_distribution(get_generator());
-                m_last_node = m_cst.lca(leaf, leaf + 1);
+                m_last_node = m_cst.lca(m_cst.select_leaf(leaf + 1), m_cst.select_leaf(leaf + 2));
             } else {
                 m_last_node = m_cst.sl(m_last_node);
             }
@@ -95,18 +93,18 @@ public:
       m_last_node(cst.root())
     {}
 
-    void reset() {
-        m_last_node = m_cst.root();
-    }
-
-    std::vector<typename t_cst::node_type> get_burst(size_t sample_count) {
+    std::vector<typename t_cst::node_type> get_data(size_t sample_count, size_t burst_size) {
         std::vector<typename t_cst::node_type> res;
         res.reserve(sample_count);
 
         for(size_t i = 0; i < sample_count; i++) {
+            if(i % burst_size == 0) {
+                m_last_node = m_cst.root();
+            }
+
             if(m_last_node == m_cst.root()) {
                 auto leaf = m_distribution(get_generator());
-                m_last_node = m_cst.lca(leaf, leaf + 1);
+                m_last_node = m_cst.lca(m_cst.select_leaf(leaf + 1), m_cst.select_leaf(leaf + 2));
             } else {
                 m_last_node = m_cst.parent(m_last_node);
             }
@@ -121,14 +119,11 @@ public:
 template<class t_cst>
 std::pair<typename t_cst::node_type, typename t_cst::node_type>
 lca_argument(const t_cst& cst, const typename t_cst::node_type v) {
-    typename t_cst::node_type w;
-    if(cst.rb(v) + 2 < cst.size()) {
-        w = cst.lca(cst.rb(v) + 1, cst.rb(v) + 2);
-    } else {
-        w = cst.root();
-    }
+    // Two nodes close to each other
+    std::uniform_int_distribution<typename t_cst::size_type> distribution(cst.lb(v), cst.rb(v));
 
-    return std::make_pair(v, w);
+    return std::make_pair(cst.select_leaf(distribution(get_generator()) + 1),
+                          cst.select_leaf(distribution(get_generator()) + 1));
 }
 
 template<class t_cst>
@@ -220,29 +215,25 @@ template<class t_cst,
 void run_benchmark(const std::string cst_name, const t_cst &cst,
                    const std::string op_name, t_test_func test_func, t_prepare_func prepare_func,
                    const std::string sampler_name, t_sampler sampler) {
-    unsigned long long nanos = 0;
+    auto nodes = sampler.get_data(NUM_REPETITIONS, BURST_SIZE);
 
-    for(int i = 0; i < NUM_BURSTS; i++) {
-        auto nodes = sampler.get_burst(BURST_SIZE);
+    std::vector<decltype(prepare_func(cst, cst.root()))> args;
+    args.reserve(nodes.size());
 
-        std::vector<decltype(prepare_func(cst, cst.root()))> args;
-        args.reserve(nodes.size());
-
-        for(auto v: nodes) {
-            args.push_back(prepare_func(cst, v));
-        }
-
-        auto start = timer::now();
-        for(auto arg: args) {
-            test_func(cst, arg);
-        }
-        auto stop = timer::now();
-
-        nanos += duration_cast<nanoseconds>(stop-start).count();
+    for(auto v: nodes) {
+        args.push_back(prepare_func(cst, v));
     }
 
+    auto start = timer::now();
+    for(auto arg: args) {
+        test_func(cst, arg);
+    }
+    auto stop = timer::now();
+
+    unsigned long long nanos = duration_cast<nanoseconds>(stop-start).count();
+
     std::cout << "# " << cst_name << "_" << op_name << "_" << sampler_name
-              << "_TIME = " << nanos / BURST_SIZE / NUM_BURSTS << std::endl;
+              << "_TIME = " << nanos / NUM_REPETITIONS << std::endl;
 }
 
 template<class t_cst>
@@ -255,17 +246,6 @@ void run_benchmark(std::string cst_name, const t_cst &cst) {
     run_benchmark(cst_name, cst, "PARENT", test_parent<t_cst>, parent_argument<t_cst>);
 }
 
-// Returns ceil(log(n))
-size_t log(size_t n) {
-    size_t m = 1;
-    size_t res = 0;
-    while(n > m) {
-        m *= 2;
-        res++;
-    }
-    return res;
-}
-
 int main(int argc, char** argv) {
     if(argc < 3) {
         std::cout << "Usage: " << argv[0] << " [fcst_file] [cst_file]" << std::endl;
@@ -275,8 +255,8 @@ int main(int argc, char** argv) {
     const char* fcst_file = argv[1];
     const char* cst_file = argv[2];
 
-    cst_type fcst;
-    cst_type::construction_cst_type cst;
+    fcst_type fcst;
+    cst_type cst;
 
     load_from_file(fcst, fcst_file);
     load_from_file(cst, cst_file);

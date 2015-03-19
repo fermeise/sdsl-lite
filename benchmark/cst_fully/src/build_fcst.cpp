@@ -4,6 +4,7 @@
 
 using namespace sdsl;
 
+typedef FCST_TYPE fcst_type;
 typedef CST_TYPE cst_type;
 
 int main(int argc, char **argv) {
@@ -17,8 +18,8 @@ int main(int argc, char **argv) {
     const char* fcst_file = argv[3];
     const char* cst_file = argv[4];
 
-    cst_type::construction_cst_type cst;
-    cst_type fcst;
+    cst_type cst;
+    fcst_type fcst;
 
     {
         cache_config config(true, tmp_dir);

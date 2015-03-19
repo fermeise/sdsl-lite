@@ -42,18 +42,20 @@ indexes: $(INDEXES)
 bin/build_fcst_%: $(SRC_DIR)/build_fcst.cpp index.config compile_options.config
 	$(eval IDX_ID:=$(call dim,1,$*))
 	$(eval IDX_TYPE:=$(call config_select,index.config,$(IDX_ID),2))
+	$(eval IDX_REF_TYPE:=$(call config_select,index.config,$(IDX_ID),3))
 	$(eval COMPILE_ID:=$(DEFAULT_COMPILE_ID))
 	$(eval COMPILE_OPTIONS:=$(call config_select,compile_options.config,$(COMPILE_ID),2))
-	$(MY_CXX) $(MY_CXX_FLAGS) $(COMPILE_OPTIONS) -DCST_TYPE="$(IDX_TYPE)" -L$(LIB_DIR) -I$(INC_DIR) -o $@ $< $(LIBS)
+	$(MY_CXX) $(MY_CXX_FLAGS) $(COMPILE_OPTIONS) -DFCST_TYPE="$(IDX_TYPE)" -DCST_TYPE="$(IDX_REF_TYPE)" -L$(LIB_DIR) -I$(INC_DIR) -o $@ $< $(LIBS)
 
 # Targets for the cst_fully experiment
 # Format: bin/fcst_time_and_space_[INDEX_ID].[COMPILE_ID]
 bin/fcst_time_and_space_%: $(SRC_DIR)/fcst_time_and_space.cpp
 	$(eval IDX_ID:=$(call dim,1,$*))
 	$(eval IDX_TYPE:=$(call config_select,index.config,$(IDX_ID),2))
+	$(eval IDX_REF_TYPE:=$(call config_select,index.config,$(IDX_ID),3))
 	$(eval COMPILE_ID:=$(call dim,2,$*))
 	$(eval COMPILE_OPTIONS:=$(call config_select,compile_options.config,$(COMPILE_ID),2))
-	$(MY_CXX) $(MY_CXX_FLAGS) $(COMPILE_OPTIONS) -DCST_TYPE="$(IDX_TYPE)" -L$(LIB_DIR) -I$(INC_DIR) -o $@ $< $(LIBS)
+	$(MY_CXX) $(MY_CXX_FLAGS) $(COMPILE_OPTIONS) -DFCST_TYPE="$(IDX_TYPE)" -DCST_TYPE="$(IDX_REF_TYPE)" -L$(LIB_DIR) -I$(INC_DIR) -o $@ $< $(LIBS)
 
 # indexes/[TC_ID].[IDX_ID]
 indexes/%: test_case.config

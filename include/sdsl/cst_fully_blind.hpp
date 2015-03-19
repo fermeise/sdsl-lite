@@ -34,7 +34,6 @@ public:
     typedef int_vector<>                                    pd_type;
     typedef t_bp_support                                    s_support_type;
     typedef t_depth                                         depth_type;
-    typedef cst_sada<t_csa, lcp_wt<> >                      construction_cst_type;
 
     typedef typename t_csa::alphabet_category               alphabet_category;
     typedef bcst_tag                                        index_category;
@@ -244,6 +243,19 @@ public:
 //! Returns true iff node v is a leaf.
     bool is_leaf(node_type v) const {
         return v.first == v.second;
+    }
+
+//! Return the i-th leaf (1-based from left to right) of the suffix tree.
+    /*!
+     * \param i 1-based position of the leaf. \f$1\leq i\leq csa.size()\f$.
+     * \return The i-th leave.
+     * \par Time complexity
+     *     \f$ \Order{1} \f$
+     * \pre \f$ 1 \leq i \leq csa.size() \f$
+     */
+    node_type select_leaf(size_type i) const {
+        assert(i > 0 and i <= m_csa.size());
+        return node_type(i - 1, i - 1);
     }
 
 //! Returns the leftmost leaf (left boundary) of a node.
