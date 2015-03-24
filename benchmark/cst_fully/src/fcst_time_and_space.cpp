@@ -246,6 +246,36 @@ void run_benchmark(std::string cst_name, const t_cst &cst) {
     run_benchmark(cst_name, cst, "PARENT", test_parent<t_cst>, parent_argument<t_cst>);
 }
 
+struct stats_t {
+    size_t max_depth;
+    size_t avg_depth;
+};
+
+template<class t_cst>
+stats_t get_stats(t_cst cst) {
+    stats_t result;
+
+    size_t max_depth = 0;
+    size_t total_depth = 0;
+    size_t node_count = 0;
+
+    for(auto it = cst.begin(); it != cst.end(); ++it) {
+        if(it.visit() == 1 && !cst.is_leaf(*it)) {
+            size_t depth = cst.depth(*it);
+            if(depth > max_depth) {
+                max_depth = depth;
+            }
+            total_depth += depth;
+            node_count++;
+        }
+    }
+
+    result.max_depth = max_depth;
+    result.avg_depth = total_depth / node_count;
+
+    return result;
+}
+
 int main(int argc, char** argv) {
     if(argc < 3) {
         std::cout << "Usage: " << argv[0] << " [fcst_file] [cst_file]" << std::endl;
@@ -266,6 +296,9 @@ int main(int argc, char** argv) {
     std::cout << "# TREE_SIZE = " << cst.nodes() << std::endl;
     std::cout << "# SAMPLING_FACTOR = " << fcst.delta << std::endl;
     std::cout << "# SAMPLED_TREE_SIZE = " << fcst.sampled_nodes() << std::endl;
+    //stats_t stats = get_stats(cst);
+    //std::cout << "# MAX_DEPTH = " << stats.max_depth << std::endl;
+    //std::cout << "# AVG_DEPTH = " << stats.avg_depth << std::endl;
 
     std::cout << "# FCST_SIZE = " << size_in_bytes(fcst) << std::endl;
     std::cout << "# CST_SIZE = " << size_in_bytes(cst) << std::endl;

@@ -17,7 +17,9 @@ FCST_EXECS=$(foreach IDX_ID,$(IDX_IDS),\
 INDEXES=$(foreach TC_ID,$(TC_IDS),\
           $(foreach IDX_ID,$(IDX_IDS),\
             indexes/$(TC_ID).$(IDX_ID)))
-INDEX_FILES=$(foreach IDX,$(INDEXES),$(IDX) $(IDX)_cst)
+INDEXES_REF=$(foreach TC_ID,$(TC_IDS),\
+          indexes/$(TC_ID).CST)
+INDEX_FILES=$(foreach IDX,$(INDEXES),$(IDX)) $(foreach IDX,$(INDEXES_REF),$(IDX))
 RES_FILES=$(foreach TC_ID,$(TC_IDS),\
             $(foreach IDX_ID,$(IDX_IDS),\
               $(foreach COMPILE_ID,$(COMPILE_IDS),\
@@ -39,7 +41,7 @@ indexes: $(INDEXES)
 
 # Targets for fcst construction
 # Format: bin/build_fcst_[IDX_ID]
-bin/build_fcst_%: $(SRC_DIR)/build_fcst.cpp index.config compile_options.config
+bin/build_fcst_%: $(SRC_DIR)/build_fcst.cpp
 	$(eval IDX_ID:=$(call dim,1,$*))
 	$(eval IDX_TYPE:=$(call config_select,index.config,$(IDX_ID),2))
 	$(eval IDX_REF_TYPE:=$(call config_select,index.config,$(IDX_ID),3))
@@ -58,12 +60,12 @@ bin/fcst_time_and_space_%: $(SRC_DIR)/fcst_time_and_space.cpp
 	$(MY_CXX) $(MY_CXX_FLAGS) $(COMPILE_OPTIONS) -DFCST_TYPE="$(IDX_TYPE)" -DCST_TYPE="$(IDX_REF_TYPE)" -L$(LIB_DIR) -I$(INC_DIR) -o $@ $< $(LIBS)
 
 # indexes/[TC_ID].[IDX_ID]
-indexes/%: test_case.config
+indexes/%:
 	$(eval TC_ID:=$(call dim,1,$*))
 	$(eval IDX_ID:=$(call dim,2,$*))
 	$(eval TC_PATH:=$(call config_select,test_case.config,$(TC_ID),2))
 	@echo "Building index $(IDX_ID) on $(TC_ID)"
-	@bin/build_fcst_$(IDX_ID) $(TC_PATH) $(TMP_DIR) $@ $@_cst
+	@bin/build_fcst_$(IDX_ID) $(TC_PATH) $(TMP_DIR) $@ indexes/$(TC_ID).CST
 
 # Format: results/[TC_ID].[INDEX_ID].[COMPILE_ID]
 results/%:
@@ -74,7 +76,7 @@ results/%:
 	@echo "# TC_ID = $(TC_ID)" >> $@
 	@echo "# IDX_ID = $(IDX_ID)" >> $@
 	@echo "# COMPILE_ID = $(COMPILE_ID)" >> $@
-	@bin/fcst_time_and_space_$(IDX_ID).$(COMPILE_ID) indexes/$(TC_ID).$(IDX_ID) indexes/$(TC_ID).$(IDX_ID)_cst >> $@
+	@bin/fcst_time_and_space_$(IDX_ID).$(COMPILE_ID) indexes/$(TC_ID).$(IDX_ID) indexes/$(TC_ID).CST >> $@
 
 include ../Make.download
 
