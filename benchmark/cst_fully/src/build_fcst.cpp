@@ -9,7 +9,7 @@ typedef CST_TYPE cst_type;
 
 int main(int argc, char **argv) {
     if(argc < 5) {
-        std::cout << "Usage: " << argv[0] << " [input_file] [tmp_dir] [fcst_file] [cst_file]" << endl;
+        std::cout << "Usage: " << argv[0] << " input_file tmp_dir fcst_file cst_file" << endl;
         return 1;
     }
 

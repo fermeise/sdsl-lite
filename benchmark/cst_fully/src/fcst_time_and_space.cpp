@@ -278,7 +278,7 @@ stats_t get_stats(t_cst cst) {
 
 int main(int argc, char** argv) {
     if(argc < 3) {
-        std::cout << "Usage: " << argv[0] << " [fcst_file] [cst_file]" << std::endl;
+        std::cout << "Usage: " << argv[0] << " fcst_file cst_file" << std::endl;
         return 1;
     }
 

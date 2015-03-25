@@ -14,6 +14,9 @@ BUILD_EXECS=$(foreach IDX_ID,$(IDX_IDS),\
 FCST_EXECS=$(foreach IDX_ID,$(IDX_IDS),\
               $(foreach COMPILE_ID,$(COMPILE_IDS),\
                bin/fcst_time_and_space_$(IDX_ID).$(COMPILE_ID)))
+FCST_VERIFY_EXECS=$(foreach IDX_ID,$(IDX_IDS),\
+              $(foreach COMPILE_ID,$(COMPILE_IDS),\
+               bin/fcst_verify_$(IDX_ID).$(COMPILE_ID)))
 INDEXES=$(foreach TC_ID,$(TC_IDS),\
           $(foreach IDX_ID,$(IDX_IDS),\
             indexes/$(TC_ID).$(IDX_ID)))
@@ -24,18 +27,24 @@ RES_FILES=$(foreach TC_ID,$(TC_IDS),\
             $(foreach IDX_ID,$(IDX_IDS),\
               $(foreach COMPILE_ID,$(COMPILE_IDS),\
                 results/$(TC_ID).$(IDX_ID).$(COMPILE_ID))))
+VERIFICATION_FILES=$(foreach TC_ID,$(TC_IDS),\
+            $(foreach IDX_ID,$(IDX_IDS),\
+              $(foreach COMPILE_ID,$(COMPILE_IDS),\
+                verification/$(TC_ID).$(IDX_ID).$(COMPILE_ID))))
 
 RES_FILE=results/all.txt
 
 all: execs
 
-timing: input execs indexes $(RES_FILES)
+timing: input $(BUILD_EXECS) $(FCST_EXECS) indexes $(RES_FILES)
 	cat $(RES_FILES) > $(RES_FILE)
 	@cd visualize; make
 
+verify: input $(BUILD_EXECS) $(FCST_VERIFY_EXECS) indexes $(VERIFICATION_FILES)
+
 input: $(TC_PATHS)
 
-execs: $(BUILD_EXECS) $(FCST_EXECS)
+execs: $(BUILD_EXECS) $(FCST_EXECS) $(FCST_VERIFY_EXECS)
 
 indexes: $(INDEXES)
 
@@ -52,6 +61,16 @@ bin/build_fcst_%: $(SRC_DIR)/build_fcst.cpp
 # Targets for the cst_fully experiment
 # Format: bin/fcst_time_and_space_[INDEX_ID].[COMPILE_ID]
 bin/fcst_time_and_space_%: $(SRC_DIR)/fcst_time_and_space.cpp
+	$(eval IDX_ID:=$(call dim,1,$*))
+	$(eval IDX_TYPE:=$(call config_select,index.config,$(IDX_ID),2))
+	$(eval IDX_REF_TYPE:=$(call config_select,index.config,$(IDX_ID),3))
+	$(eval COMPILE_ID:=$(call dim,2,$*))
+	$(eval COMPILE_OPTIONS:=$(call config_select,compile_options.config,$(COMPILE_ID),2))
+	$(MY_CXX) $(MY_CXX_FLAGS) $(COMPILE_OPTIONS) -DFCST_TYPE="$(IDX_TYPE)" -DCST_TYPE="$(IDX_REF_TYPE)" -L$(LIB_DIR) -I$(INC_DIR) -o $@ $< $(LIBS)
+
+# Targets for the cst_fully verification
+# Format: bin/fcst_verify_[INDEX_ID].[COMPILE_ID]
+bin/fcst_verify_%: $(SRC_DIR)/fcst_verify.cpp
 	$(eval IDX_ID:=$(call dim,1,$*))
 	$(eval IDX_TYPE:=$(call config_select,index.config,$(IDX_ID),2))
 	$(eval IDX_REF_TYPE:=$(call config_select,index.config,$(IDX_ID),3))
@@ -78,10 +97,20 @@ results/%:
 	@echo "# COMPILE_ID = $(COMPILE_ID)" >> $@
 	@bin/fcst_time_and_space_$(IDX_ID).$(COMPILE_ID) indexes/$(TC_ID).$(IDX_ID) indexes/$(TC_ID).CST >> $@
 
+verification/%:
+	$(eval TC_ID:=$(call dim,1,$*))
+	$(eval IDX_ID:=$(call dim,2,$*))
+	$(eval COMPILE_ID:=$(call dim,3,$*))
+	@echo "Running bin/fcst_verify_$(IDX_ID).$(COMPILE_ID) on $(TC_ID)"
+	@echo "# TC_ID = $(TC_ID)"
+	@echo "# IDX_ID = $(IDX_ID)"
+	@echo "# COMPILE_ID = $(COMPILE_ID)"
+	@bin/fcst_verify_$(IDX_ID).$(COMPILE_ID) indexes/$(TC_ID).$(IDX_ID) indexes/$(TC_ID).CST
+
 include ../Make.download
 
 clean:
-	rm -f $(FCST_EXECS) $(BUILD_EXECS) $(INDEX_FILES)
+	rm -f $(FCST_EXECS) $(BUILD_EXECS) $(INDEX_FILES) $(TMP_DIR)/*
 
 clean_results:
 	rm -f $(RES_FILES)
