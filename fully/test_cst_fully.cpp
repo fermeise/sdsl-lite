@@ -212,6 +212,7 @@ typedef ::testing::Types<
     cst_fully<csa_wt<>, bp_support_sada<>, sd_vector<>, dac_vector<>, 10, false>,
     cst_fully_sds<csa_wt<>, bp_support_sada<>, sd_vector<>, dac_vector<>, sd_vector<>, 4>,
     cst_fully_blind<csa_wt<>, bp_support_sada<>, sd_vector<>, dac_vector<>, 4, false>
+    //,cst_sada_blind<csa_wt<>, lcp_wt<> >
     > BlackboxTestTypes;
 typedef cst_sada<> ref_cst_type;
 
@@ -219,262 +220,253 @@ TYPED_TEST_CASE(CstFullyBlackboxTest, BlackboxTestTypes);
 
 TYPED_TEST(CstFullyBlackboxTest, DepthTest) {
     typedef TypeParam cst_type;
-    typedef typename cst_type::node_type node_type;
 
     cst_type fcst;
     construct_im(fcst, "abbbab", 1);
 
-    EXPECT_EQ(1, fcst.depth(node_type(0, 0)));
-    EXPECT_EQ(0, fcst.depth(node_type(0, 3)));
-    EXPECT_EQ(0, fcst.depth(node_type(0, 6)));
-    EXPECT_EQ(3, fcst.depth(node_type(1, 1)));
-    EXPECT_EQ(2, fcst.depth(node_type(1, 2)));
-    EXPECT_EQ(0, fcst.depth(node_type(1, 3)));
-    EXPECT_EQ(0, fcst.depth(node_type(1, 4)));
-    EXPECT_EQ(0, fcst.depth(node_type(1, 6)));
-    EXPECT_EQ(7, fcst.depth(node_type(2, 2)));
-    EXPECT_EQ(0, fcst.depth(node_type(2, 3)));
-    EXPECT_EQ(2, fcst.depth(node_type(3, 3)));
-    EXPECT_EQ(1, fcst.depth(node_type(3, 4)));
-    EXPECT_EQ(1, fcst.depth(node_type(3, 5)));
-    EXPECT_EQ(1, fcst.depth(node_type(3, 6)));
-    EXPECT_EQ(5, fcst.depth(node_type(5, 5)));
-    EXPECT_EQ(2, fcst.depth(node_type(5, 6)));
+    EXPECT_EQ(1, fcst.depth(fcst.node(0, 0)));
+    EXPECT_EQ(0, fcst.depth(fcst.node(0, 3)));
+    EXPECT_EQ(0, fcst.depth(fcst.node(0, 6)));
+    EXPECT_EQ(3, fcst.depth(fcst.node(1, 1)));
+    EXPECT_EQ(2, fcst.depth(fcst.node(1, 2)));
+    EXPECT_EQ(0, fcst.depth(fcst.node(1, 3)));
+    EXPECT_EQ(0, fcst.depth(fcst.node(1, 4)));
+    EXPECT_EQ(0, fcst.depth(fcst.node(1, 6)));
+    EXPECT_EQ(7, fcst.depth(fcst.node(2, 2)));
+    EXPECT_EQ(0, fcst.depth(fcst.node(2, 3)));
+    EXPECT_EQ(2, fcst.depth(fcst.node(3, 3)));
+    EXPECT_EQ(1, fcst.depth(fcst.node(3, 4)));
+    EXPECT_EQ(1, fcst.depth(fcst.node(3, 5)));
+    EXPECT_EQ(1, fcst.depth(fcst.node(3, 6)));
+    EXPECT_EQ(5, fcst.depth(fcst.node(5, 5)));
+    EXPECT_EQ(2, fcst.depth(fcst.node(5, 6)));
 }
 
 TYPED_TEST(CstFullyBlackboxTest, LCATest) {
     typedef TypeParam cst_type;
-    typedef typename cst_type::node_type node_type;
 
     cst_type fcst;
     construct_im(fcst, "abbbab", 1);
 
-    auto lca = [&](size_t l, size_t r) { return fcst.lca(node_type(l, l), node_type(r, r)); };
+    auto lca = [&](size_t l, size_t r) { return fcst.lca(fcst.node(l, l), fcst.node(r, r)); };
 
-    EXPECT_EQ(node_type(0, 0), lca(0, 0));
-    EXPECT_EQ(node_type(0, 6), lca(0, 3));
-    EXPECT_EQ(node_type(0, 6), lca(0, 6));
-    EXPECT_EQ(node_type(1, 1), lca(1, 1));
-    EXPECT_EQ(node_type(1, 2), lca(1, 2));
-    EXPECT_EQ(node_type(0, 6), lca(1, 3));
-    EXPECT_EQ(node_type(0, 6), lca(1, 4));
-    EXPECT_EQ(node_type(0, 6), lca(1, 6));
-    EXPECT_EQ(node_type(2, 2), lca(2, 2));
-    EXPECT_EQ(node_type(0, 6), lca(2, 3));
-    EXPECT_EQ(node_type(3, 3), lca(3, 3));
-    EXPECT_EQ(node_type(3, 6), lca(3, 4));
-    EXPECT_EQ(node_type(3, 6), lca(3, 5));
-    EXPECT_EQ(node_type(3, 6), lca(3, 6));
-    EXPECT_EQ(node_type(5, 5), lca(5, 5));
-    EXPECT_EQ(node_type(5, 6), lca(5, 6));
+    EXPECT_EQ(fcst.node(0, 0), lca(0, 0));
+    EXPECT_EQ(fcst.node(0, 6), lca(0, 3));
+    EXPECT_EQ(fcst.node(0, 6), lca(0, 6));
+    EXPECT_EQ(fcst.node(1, 1), lca(1, 1));
+    EXPECT_EQ(fcst.node(1, 2), lca(1, 2));
+    EXPECT_EQ(fcst.node(0, 6), lca(1, 3));
+    EXPECT_EQ(fcst.node(0, 6), lca(1, 4));
+    EXPECT_EQ(fcst.node(0, 6), lca(1, 6));
+    EXPECT_EQ(fcst.node(2, 2), lca(2, 2));
+    EXPECT_EQ(fcst.node(0, 6), lca(2, 3));
+    EXPECT_EQ(fcst.node(3, 3), lca(3, 3));
+    EXPECT_EQ(fcst.node(3, 6), lca(3, 4));
+    EXPECT_EQ(fcst.node(3, 6), lca(3, 5));
+    EXPECT_EQ(fcst.node(3, 6), lca(3, 6));
+    EXPECT_EQ(fcst.node(5, 5), lca(5, 5));
+    EXPECT_EQ(fcst.node(5, 6), lca(5, 6));
 }
 
 TYPED_TEST(CstFullyBlackboxTest, LCATest2) {
     typedef TypeParam cst_type;
-    typedef typename cst_type::node_type node_type;
 
     cst_type fcst;
     construct_im(fcst, "Mississippi", 1);
 
-    auto lca = [&](size_t l, size_t r) { return fcst.lca(node_type(l, l), node_type(r, r)); };
+    auto lca = [&](size_t l, size_t r) { return fcst.lca(fcst.node(l, l), fcst.node(r, r)); };
 
-    EXPECT_EQ(node_type(0,  0), lca(0,  0));
-    EXPECT_EQ(node_type(0, 11), lca(0,  2));
-    EXPECT_EQ(node_type(0, 11), lca(0,  8));
-    EXPECT_EQ(node_type(0, 11), lca(0,  8));
-    EXPECT_EQ(node_type(2,  2), lca(2,  2));
-    EXPECT_EQ(node_type(2,  5), lca(2,  3));
-    EXPECT_EQ(node_type(2,  5), lca(2,  4));
-    EXPECT_EQ(node_type(2,  5), lca(2,  5));
-    EXPECT_EQ(node_type(0, 11), lca(2,  6));
-    EXPECT_EQ(node_type(0, 11), lca(2,  8));
-    EXPECT_EQ(node_type(0, 11), lca(2, 10));
-    EXPECT_EQ(node_type(2,  5), lca(3,  4));
-    EXPECT_EQ(node_type(2,  5), lca(3,  5));
-    EXPECT_EQ(node_type(0, 11), lca(3,  6));
-    EXPECT_EQ(node_type(0, 11), lca(3,  9));
-    EXPECT_EQ(node_type(4,  5), lca(4,  5));
-    EXPECT_EQ(node_type(0, 11), lca(4,  6));
-    EXPECT_EQ(node_type(8,  8), lca(8,  8));
-    EXPECT_EQ(node_type(8,  9), lca(8,  9));
-    EXPECT_EQ(node_type(8, 11), lca(8, 10));
-    EXPECT_EQ(node_type(8, 11), lca(8, 11));
-    EXPECT_EQ(node_type(9,  9), lca(9,  9));
-    EXPECT_EQ(node_type(8, 11), lca(9, 10));
-    EXPECT_EQ(node_type(8, 11), lca(9, 11));
+    EXPECT_EQ(fcst.node(0,  0), lca(0,  0));
+    EXPECT_EQ(fcst.node(0, 11), lca(0,  2));
+    EXPECT_EQ(fcst.node(0, 11), lca(0,  8));
+    EXPECT_EQ(fcst.node(0, 11), lca(0,  8));
+    EXPECT_EQ(fcst.node(2,  2), lca(2,  2));
+    EXPECT_EQ(fcst.node(2,  5), lca(2,  3));
+    EXPECT_EQ(fcst.node(2,  5), lca(2,  4));
+    EXPECT_EQ(fcst.node(2,  5), lca(2,  5));
+    EXPECT_EQ(fcst.node(0, 11), lca(2,  6));
+    EXPECT_EQ(fcst.node(0, 11), lca(2,  8));
+    EXPECT_EQ(fcst.node(0, 11), lca(2, 10));
+    EXPECT_EQ(fcst.node(2,  5), lca(3,  4));
+    EXPECT_EQ(fcst.node(2,  5), lca(3,  5));
+    EXPECT_EQ(fcst.node(0, 11), lca(3,  6));
+    EXPECT_EQ(fcst.node(0, 11), lca(3,  9));
+    EXPECT_EQ(fcst.node(4,  5), lca(4,  5));
+    EXPECT_EQ(fcst.node(0, 11), lca(4,  6));
+    EXPECT_EQ(fcst.node(8,  8), lca(8,  8));
+    EXPECT_EQ(fcst.node(8,  9), lca(8,  9));
+    EXPECT_EQ(fcst.node(8, 11), lca(8, 10));
+    EXPECT_EQ(fcst.node(8, 11), lca(8, 11));
+    EXPECT_EQ(fcst.node(9,  9), lca(9,  9));
+    EXPECT_EQ(fcst.node(8, 11), lca(9, 10));
+    EXPECT_EQ(fcst.node(8, 11), lca(9, 11));
 }
 
 TYPED_TEST(CstFullyBlackboxTest, SuffixLinkTest) {
     typedef TypeParam cst_type;
-    typedef typename cst_type::node_type node_type;
 
     cst_type fcst;
     construct_im(fcst, "Mississippi", 1);
 
-    EXPECT_EQ(node_type( 5,  5), fcst.sl(node_type( 1,  1)));
-    EXPECT_EQ(node_type(11, 11), fcst.sl(node_type( 5,  5)));
-    EXPECT_EQ(node_type( 9,  9), fcst.sl(node_type(11, 11)));
-    EXPECT_EQ(node_type( 4,  4), fcst.sl(node_type( 9,  9)));
-    EXPECT_EQ(node_type(10, 10), fcst.sl(node_type( 4,  4)));
-    EXPECT_EQ(node_type( 8,  8), fcst.sl(node_type(10, 10)));
-    EXPECT_EQ(node_type( 3,  3), fcst.sl(node_type( 8,  8)));
-    EXPECT_EQ(node_type( 7,  7), fcst.sl(node_type( 3,  3)));
-    EXPECT_EQ(node_type( 6,  6), fcst.sl(node_type( 7,  7)));
-    EXPECT_EQ(node_type( 2,  2), fcst.sl(node_type( 6,  6)));
-    EXPECT_EQ(node_type( 0,  0), fcst.sl(node_type( 2,  2)));
-    EXPECT_EQ(node_type( 1,  1), fcst.sl(node_type( 0,  0)));
+    EXPECT_EQ(fcst.node( 5,  5), fcst.sl(fcst.node( 1,  1)));
+    EXPECT_EQ(fcst.node(11, 11), fcst.sl(fcst.node( 5,  5)));
+    EXPECT_EQ(fcst.node( 9,  9), fcst.sl(fcst.node(11, 11)));
+    EXPECT_EQ(fcst.node( 4,  4), fcst.sl(fcst.node( 9,  9)));
+    EXPECT_EQ(fcst.node(10, 10), fcst.sl(fcst.node( 4,  4)));
+    EXPECT_EQ(fcst.node( 8,  8), fcst.sl(fcst.node(10, 10)));
+    EXPECT_EQ(fcst.node( 3,  3), fcst.sl(fcst.node( 8,  8)));
+    EXPECT_EQ(fcst.node( 7,  7), fcst.sl(fcst.node( 3,  3)));
+    EXPECT_EQ(fcst.node( 6,  6), fcst.sl(fcst.node( 7,  7)));
+    EXPECT_EQ(fcst.node( 2,  2), fcst.sl(fcst.node( 6,  6)));
+    EXPECT_EQ(fcst.node( 0,  0), fcst.sl(fcst.node( 2,  2)));
+    EXPECT_EQ(fcst.node( 1,  1), fcst.sl(fcst.node( 0,  0)));
 
-    EXPECT_EQ(node_type( 0, 11), fcst.sl(node_type( 0, 11)));
-    EXPECT_EQ(node_type( 0, 11), fcst.sl(node_type( 2,  5)));
-    EXPECT_EQ(node_type(10, 11), fcst.sl(node_type( 4,  5)));
-    EXPECT_EQ(node_type( 0, 11), fcst.sl(node_type( 6,  7)));
-    EXPECT_EQ(node_type( 0, 11), fcst.sl(node_type( 8, 11)));
-    EXPECT_EQ(node_type( 2,  5), fcst.sl(node_type( 8,  9)));
-    EXPECT_EQ(node_type( 8,  9), fcst.sl(node_type(10, 11)));
+    EXPECT_EQ(fcst.node( 0, 11), fcst.sl(fcst.node( 0, 11)));
+    EXPECT_EQ(fcst.node( 0, 11), fcst.sl(fcst.node( 2,  5)));
+    EXPECT_EQ(fcst.node(10, 11), fcst.sl(fcst.node( 4,  5)));
+    EXPECT_EQ(fcst.node( 0, 11), fcst.sl(fcst.node( 6,  7)));
+    EXPECT_EQ(fcst.node( 0, 11), fcst.sl(fcst.node( 8, 11)));
+    EXPECT_EQ(fcst.node( 2,  5), fcst.sl(fcst.node( 8,  9)));
+    EXPECT_EQ(fcst.node( 8,  9), fcst.sl(fcst.node(10, 11)));
 }
 
 TYPED_TEST(CstFullyBlackboxTest, ParentTest) {
     typedef TypeParam cst_type;
-    typedef typename cst_type::node_type node_type;
 
     cst_type fcst;
     construct_im(fcst, "Mississippi", 1);
 
-    EXPECT_EQ(node_type( 0, 11), fcst.parent(node_type( 0,  0)));
-    EXPECT_EQ(node_type( 0, 11), fcst.parent(node_type( 1,  1)));
-    EXPECT_EQ(node_type( 2,  5), fcst.parent(node_type( 2,  2)));
-    EXPECT_EQ(node_type( 2,  5), fcst.parent(node_type( 3,  3)));
-    EXPECT_EQ(node_type( 4,  5), fcst.parent(node_type( 4,  4)));
-    EXPECT_EQ(node_type( 4,  5), fcst.parent(node_type( 5,  5)));
-    EXPECT_EQ(node_type( 6,  7), fcst.parent(node_type( 6,  6)));
-    EXPECT_EQ(node_type( 6,  7), fcst.parent(node_type( 7,  7)));
-    EXPECT_EQ(node_type( 8,  9), fcst.parent(node_type( 8,  8)));
-    EXPECT_EQ(node_type( 8,  9), fcst.parent(node_type( 9,  9)));
-    EXPECT_EQ(node_type(10, 11), fcst.parent(node_type(10, 10)));
-    EXPECT_EQ(node_type(10, 11), fcst.parent(node_type(11, 11)));
+    EXPECT_EQ(fcst.node( 0, 11), fcst.parent(fcst.node( 0,  0)));
+    EXPECT_EQ(fcst.node( 0, 11), fcst.parent(fcst.node( 1,  1)));
+    EXPECT_EQ(fcst.node( 2,  5), fcst.parent(fcst.node( 2,  2)));
+    EXPECT_EQ(fcst.node( 2,  5), fcst.parent(fcst.node( 3,  3)));
+    EXPECT_EQ(fcst.node( 4,  5), fcst.parent(fcst.node( 4,  4)));
+    EXPECT_EQ(fcst.node( 4,  5), fcst.parent(fcst.node( 5,  5)));
+    EXPECT_EQ(fcst.node( 6,  7), fcst.parent(fcst.node( 6,  6)));
+    EXPECT_EQ(fcst.node( 6,  7), fcst.parent(fcst.node( 7,  7)));
+    EXPECT_EQ(fcst.node( 8,  9), fcst.parent(fcst.node( 8,  8)));
+    EXPECT_EQ(fcst.node( 8,  9), fcst.parent(fcst.node( 9,  9)));
+    EXPECT_EQ(fcst.node(10, 11), fcst.parent(fcst.node(10, 10)));
+    EXPECT_EQ(fcst.node(10, 11), fcst.parent(fcst.node(11, 11)));
 
-    EXPECT_EQ(node_type( 0, 11), fcst.parent(node_type( 0, 11)));
-    EXPECT_EQ(node_type( 0, 11), fcst.parent(node_type( 2,  5)));
-    EXPECT_EQ(node_type( 2,  5), fcst.parent(node_type( 4,  5)));
-    EXPECT_EQ(node_type( 0, 11), fcst.parent(node_type( 6,  7)));
-    EXPECT_EQ(node_type( 8, 11), fcst.parent(node_type(10, 11)));
-    EXPECT_EQ(node_type( 8, 11), fcst.parent(node_type( 8,  9)));
-    EXPECT_EQ(node_type( 0, 11), fcst.parent(node_type( 8, 11)));
+    EXPECT_EQ(fcst.node( 0, 11), fcst.parent(fcst.node( 0, 11)));
+    EXPECT_EQ(fcst.node( 0, 11), fcst.parent(fcst.node( 2,  5)));
+    EXPECT_EQ(fcst.node( 2,  5), fcst.parent(fcst.node( 4,  5)));
+    EXPECT_EQ(fcst.node( 0, 11), fcst.parent(fcst.node( 6,  7)));
+    EXPECT_EQ(fcst.node( 8, 11), fcst.parent(fcst.node(10, 11)));
+    EXPECT_EQ(fcst.node( 8, 11), fcst.parent(fcst.node( 8,  9)));
+    EXPECT_EQ(fcst.node( 0, 11), fcst.parent(fcst.node( 8, 11)));
 }
 
 TYPED_TEST(CstFullyBlackboxTest, ChildTest) {
     typedef TypeParam cst_type;
-    typedef typename cst_type::node_type node_type;
 
     cst_type fcst;
     construct_im(fcst, "Mississippi", 1);
 
-    EXPECT_EQ(node_type( 0,  0), fcst.child(node_type( 0, 11), '\0'));
-    EXPECT_EQ(node_type( 1,  1), fcst.child(node_type( 0, 11), 'M'));
-    EXPECT_EQ(node_type( 2,  5), fcst.child(node_type( 0, 11), 'i'));
-    EXPECT_EQ(node_type( 6,  7), fcst.child(node_type( 0, 11), 'p'));
-    EXPECT_EQ(node_type( 8, 11), fcst.child(node_type( 0, 11), 's'));
-    EXPECT_EQ(node_type( 2,  2), fcst.child(node_type( 2,  5), '\0'));
-    EXPECT_EQ(node_type( 3,  3), fcst.child(node_type( 2,  5), 'p'));
-    EXPECT_EQ(node_type( 4,  5), fcst.child(node_type( 2,  5), 's'));
-    EXPECT_EQ(node_type( 6,  6), fcst.child(node_type( 6,  7), 'i'));
-    EXPECT_EQ(node_type( 7,  7), fcst.child(node_type( 6,  7), 'p'));
-    EXPECT_EQ(node_type( 8,  9), fcst.child(node_type( 8, 11), 'i'));
-    EXPECT_EQ(node_type(10, 11), fcst.child(node_type( 8, 11), 's'));
-    EXPECT_EQ(node_type( 8,  8), fcst.child(node_type( 8,  9), 'p'));
-    EXPECT_EQ(node_type( 9,  9), fcst.child(node_type( 8,  9), 's'));
-    EXPECT_EQ(node_type(10, 10), fcst.child(node_type(10, 11), 'p'));
-    EXPECT_EQ(node_type(11, 11), fcst.child(node_type(10, 11), 's'));
+    EXPECT_EQ(fcst.node( 0,  0), fcst.child(fcst.node( 0, 11), '\0'));
+    EXPECT_EQ(fcst.node( 1,  1), fcst.child(fcst.node( 0, 11), 'M'));
+    EXPECT_EQ(fcst.node( 2,  5), fcst.child(fcst.node( 0, 11), 'i'));
+    EXPECT_EQ(fcst.node( 6,  7), fcst.child(fcst.node( 0, 11), 'p'));
+    EXPECT_EQ(fcst.node( 8, 11), fcst.child(fcst.node( 0, 11), 's'));
+    EXPECT_EQ(fcst.node( 2,  2), fcst.child(fcst.node( 2,  5), '\0'));
+    EXPECT_EQ(fcst.node( 3,  3), fcst.child(fcst.node( 2,  5), 'p'));
+    EXPECT_EQ(fcst.node( 4,  5), fcst.child(fcst.node( 2,  5), 's'));
+    EXPECT_EQ(fcst.node( 6,  6), fcst.child(fcst.node( 6,  7), 'i'));
+    EXPECT_EQ(fcst.node( 7,  7), fcst.child(fcst.node( 6,  7), 'p'));
+    EXPECT_EQ(fcst.node( 8,  9), fcst.child(fcst.node( 8, 11), 'i'));
+    EXPECT_EQ(fcst.node(10, 11), fcst.child(fcst.node( 8, 11), 's'));
+    EXPECT_EQ(fcst.node( 8,  8), fcst.child(fcst.node( 8,  9), 'p'));
+    EXPECT_EQ(fcst.node( 9,  9), fcst.child(fcst.node( 8,  9), 's'));
+    EXPECT_EQ(fcst.node(10, 10), fcst.child(fcst.node(10, 11), 'p'));
+    EXPECT_EQ(fcst.node(11, 11), fcst.child(fcst.node(10, 11), 's'));
 
-    EXPECT_EQ(fcst.root(),       fcst.child(node_type( 2,  5), 'i'));
-    EXPECT_EQ(fcst.root(),       fcst.child(node_type( 6,  7), 's'));
-    EXPECT_EQ(fcst.root(),       fcst.child(node_type( 8, 11), 'p'));
+    EXPECT_EQ(fcst.root(),       fcst.child(fcst.node( 2,  5), 'i'));
+    EXPECT_EQ(fcst.root(),       fcst.child(fcst.node( 6,  7), 's'));
+    EXPECT_EQ(fcst.root(),       fcst.child(fcst.node( 8, 11), 'p'));
 }
 
 TYPED_TEST(CstFullyBlackboxTest, SelectChildTest) {
     typedef TypeParam cst_type;
-    typedef typename cst_type::node_type node_type;
 
     cst_type fcst;
     construct_im(fcst, "Mississippi", 1);
 
-    EXPECT_EQ(node_type( 0,  0), fcst.select_child(node_type( 0, 11), 1));
-    EXPECT_EQ(node_type( 1,  1), fcst.select_child(node_type( 0, 11), 2));
-    EXPECT_EQ(node_type( 2,  5), fcst.select_child(node_type( 0, 11), 3));
-    EXPECT_EQ(node_type( 6,  7), fcst.select_child(node_type( 0, 11), 4));
-    EXPECT_EQ(node_type( 8, 11), fcst.select_child(node_type( 0, 11), 5));
-    EXPECT_EQ(fcst.root(),       fcst.select_child(node_type( 0, 11), 6));
-    EXPECT_EQ(node_type( 2,  2), fcst.select_child(node_type( 2,  5), 1));
-    EXPECT_EQ(node_type( 3,  3), fcst.select_child(node_type( 2,  5), 2));
-    EXPECT_EQ(node_type( 4,  5), fcst.select_child(node_type( 2,  5), 3));
-    EXPECT_EQ(fcst.root(),       fcst.select_child(node_type( 2,  5), 4));
-    EXPECT_EQ(node_type( 4,  4), fcst.select_child(node_type( 4,  5), 1));
-    EXPECT_EQ(node_type( 5,  5), fcst.select_child(node_type( 4,  5), 2));
-    EXPECT_EQ(fcst.root(),       fcst.select_child(node_type( 4,  5), 3));
-    EXPECT_EQ(node_type( 6,  6), fcst.select_child(node_type( 6,  7), 1));
-    EXPECT_EQ(node_type( 7,  7), fcst.select_child(node_type( 6,  7), 2));
-    EXPECT_EQ(fcst.root(),       fcst.select_child(node_type( 6,  7), 3));
-    EXPECT_EQ(node_type( 8,  9), fcst.select_child(node_type( 8, 11), 1));
-    EXPECT_EQ(node_type(10, 11), fcst.select_child(node_type( 8, 11), 2));
-    EXPECT_EQ(fcst.root(),       fcst.select_child(node_type( 8, 11), 3));
-    EXPECT_EQ(node_type( 8,  8), fcst.select_child(node_type( 8,  9), 1));
-    EXPECT_EQ(node_type( 9,  9), fcst.select_child(node_type( 8,  9), 2));
-    EXPECT_EQ(fcst.root(),       fcst.select_child(node_type( 8,  9), 3));
-    EXPECT_EQ(node_type(10, 10), fcst.select_child(node_type(10, 11), 1));
-    EXPECT_EQ(node_type(11, 11), fcst.select_child(node_type(10, 11), 2));
-    EXPECT_EQ(fcst.root(),       fcst.select_child(node_type(10, 11), 3));
+    EXPECT_EQ(fcst.node( 0,  0), fcst.select_child(fcst.node( 0, 11), 1));
+    EXPECT_EQ(fcst.node( 1,  1), fcst.select_child(fcst.node( 0, 11), 2));
+    EXPECT_EQ(fcst.node( 2,  5), fcst.select_child(fcst.node( 0, 11), 3));
+    EXPECT_EQ(fcst.node( 6,  7), fcst.select_child(fcst.node( 0, 11), 4));
+    EXPECT_EQ(fcst.node( 8, 11), fcst.select_child(fcst.node( 0, 11), 5));
+    EXPECT_EQ(fcst.root(),       fcst.select_child(fcst.node( 0, 11), 6));
+    EXPECT_EQ(fcst.node( 2,  2), fcst.select_child(fcst.node( 2,  5), 1));
+    EXPECT_EQ(fcst.node( 3,  3), fcst.select_child(fcst.node( 2,  5), 2));
+    EXPECT_EQ(fcst.node( 4,  5), fcst.select_child(fcst.node( 2,  5), 3));
+    EXPECT_EQ(fcst.root(),       fcst.select_child(fcst.node( 2,  5), 4));
+    EXPECT_EQ(fcst.node( 4,  4), fcst.select_child(fcst.node( 4,  5), 1));
+    EXPECT_EQ(fcst.node( 5,  5), fcst.select_child(fcst.node( 4,  5), 2));
+    EXPECT_EQ(fcst.root(),       fcst.select_child(fcst.node( 4,  5), 3));
+    EXPECT_EQ(fcst.node( 6,  6), fcst.select_child(fcst.node( 6,  7), 1));
+    EXPECT_EQ(fcst.node( 7,  7), fcst.select_child(fcst.node( 6,  7), 2));
+    EXPECT_EQ(fcst.root(),       fcst.select_child(fcst.node( 6,  7), 3));
+    EXPECT_EQ(fcst.node( 8,  9), fcst.select_child(fcst.node( 8, 11), 1));
+    EXPECT_EQ(fcst.node(10, 11), fcst.select_child(fcst.node( 8, 11), 2));
+    EXPECT_EQ(fcst.root(),       fcst.select_child(fcst.node( 8, 11), 3));
+    EXPECT_EQ(fcst.node( 8,  8), fcst.select_child(fcst.node( 8,  9), 1));
+    EXPECT_EQ(fcst.node( 9,  9), fcst.select_child(fcst.node( 8,  9), 2));
+    EXPECT_EQ(fcst.root(),       fcst.select_child(fcst.node( 8,  9), 3));
+    EXPECT_EQ(fcst.node(10, 10), fcst.select_child(fcst.node(10, 11), 1));
+    EXPECT_EQ(fcst.node(11, 11), fcst.select_child(fcst.node(10, 11), 2));
+    EXPECT_EQ(fcst.root(),       fcst.select_child(fcst.node(10, 11), 3));
 }
 
 TYPED_TEST(CstFullyBlackboxTest, SiblingTest) {
     typedef TypeParam cst_type;
-    typedef typename cst_type::node_type node_type;
 
     cst_type fcst;
     construct_im(fcst, "Mississippi", 1);
 
-    EXPECT_EQ(node_type( 1,  1), fcst.sibling(node_type( 0,  0)));
-    EXPECT_EQ(node_type( 2,  5), fcst.sibling(node_type( 1,  1)));
-    EXPECT_EQ(node_type( 6,  7), fcst.sibling(node_type( 2,  5)));
-    EXPECT_EQ(node_type( 3,  3), fcst.sibling(node_type( 2,  2)));
-    EXPECT_EQ(node_type( 4,  5), fcst.sibling(node_type( 3,  3)));
-    EXPECT_EQ(fcst.root(),       fcst.sibling(node_type( 4,  5)));
-    EXPECT_EQ(node_type( 5,  5), fcst.sibling(node_type( 4,  4)));
-    EXPECT_EQ(fcst.root(),       fcst.sibling(node_type( 5,  5)));
-    EXPECT_EQ(node_type( 8, 11), fcst.sibling(node_type( 6,  7)));
-    EXPECT_EQ(node_type( 7,  7), fcst.sibling(node_type( 6,  6)));
-    EXPECT_EQ(fcst.root(),       fcst.sibling(node_type( 7,  7)));
-    EXPECT_EQ(fcst.root(),       fcst.sibling(node_type( 8, 11)));
-    EXPECT_EQ(node_type(10, 11), fcst.sibling(node_type( 8,  9)));
-    EXPECT_EQ(node_type( 9,  9), fcst.sibling(node_type( 8,  8)));
-    EXPECT_EQ(fcst.root(),       fcst.sibling(node_type( 9,  9)));
-    EXPECT_EQ(fcst.root(),       fcst.sibling(node_type(10, 11)));
-    EXPECT_EQ(node_type(11, 11), fcst.sibling(node_type(10, 10)));
-    EXPECT_EQ(fcst.root(),       fcst.sibling(node_type(11, 11)));
+    EXPECT_EQ(fcst.node( 1,  1), fcst.sibling(fcst.node( 0,  0)));
+    EXPECT_EQ(fcst.node( 2,  5), fcst.sibling(fcst.node( 1,  1)));
+    EXPECT_EQ(fcst.node( 6,  7), fcst.sibling(fcst.node( 2,  5)));
+    EXPECT_EQ(fcst.node( 3,  3), fcst.sibling(fcst.node( 2,  2)));
+    EXPECT_EQ(fcst.node( 4,  5), fcst.sibling(fcst.node( 3,  3)));
+    EXPECT_EQ(fcst.root(),       fcst.sibling(fcst.node( 4,  5)));
+    EXPECT_EQ(fcst.node( 5,  5), fcst.sibling(fcst.node( 4,  4)));
+    EXPECT_EQ(fcst.root(),       fcst.sibling(fcst.node( 5,  5)));
+    EXPECT_EQ(fcst.node( 8, 11), fcst.sibling(fcst.node( 6,  7)));
+    EXPECT_EQ(fcst.node( 7,  7), fcst.sibling(fcst.node( 6,  6)));
+    EXPECT_EQ(fcst.root(),       fcst.sibling(fcst.node( 7,  7)));
+    EXPECT_EQ(fcst.root(),       fcst.sibling(fcst.node( 8, 11)));
+    EXPECT_EQ(fcst.node(10, 11), fcst.sibling(fcst.node( 8,  9)));
+    EXPECT_EQ(fcst.node( 9,  9), fcst.sibling(fcst.node( 8,  8)));
+    EXPECT_EQ(fcst.root(),       fcst.sibling(fcst.node( 9,  9)));
+    EXPECT_EQ(fcst.root(),       fcst.sibling(fcst.node(10, 11)));
+    EXPECT_EQ(fcst.node(11, 11), fcst.sibling(fcst.node(10, 10)));
+    EXPECT_EQ(fcst.root(),       fcst.sibling(fcst.node(11, 11)));
 }
 
 TYPED_TEST(CstFullyBlackboxTest, EdgeTest) {
     typedef TypeParam cst_type;
-    typedef typename cst_type::node_type node_type;
 
     cst_type fcst;
     construct_im(fcst, "Mississippi", 1);
 
-    EXPECT_EQ('i', fcst.edge(node_type( 2,  5), 1));
-    EXPECT_EQ('p', fcst.edge(node_type( 6,  7), 1));
-    EXPECT_EQ('s', fcst.edge(node_type( 8, 11), 1));
-    EXPECT_EQ('s', fcst.edge(node_type( 8,  9), 1));
-    EXPECT_EQ('i', fcst.edge(node_type( 8,  9), 2));
-    EXPECT_EQ('s', fcst.edge(node_type(10, 11), 1));
-    EXPECT_EQ('s', fcst.edge(node_type(10, 11), 2));
-    EXPECT_EQ('i', fcst.edge(node_type(10, 11), 3));
+    EXPECT_EQ('i', fcst.edge(fcst.node( 2,  5), 1));
+    EXPECT_EQ('p', fcst.edge(fcst.node( 6,  7), 1));
+    EXPECT_EQ('s', fcst.edge(fcst.node( 8, 11), 1));
+    EXPECT_EQ('s', fcst.edge(fcst.node( 8,  9), 1));
+    EXPECT_EQ('i', fcst.edge(fcst.node( 8,  9), 2));
+    EXPECT_EQ('s', fcst.edge(fcst.node(10, 11), 1));
+    EXPECT_EQ('s', fcst.edge(fcst.node(10, 11), 2));
+    EXPECT_EQ('i', fcst.edge(fcst.node(10, 11), 3));
 
-    EXPECT_EQ('\0',fcst.edge(node_type( 0,  0), 1));
-    EXPECT_EQ('M', fcst.edge(node_type( 1,  1), 1));
-    EXPECT_EQ('i', fcst.edge(node_type( 1,  1), 2));
-    EXPECT_EQ('s', fcst.edge(node_type( 1,  1), 3));
-    EXPECT_EQ('p', fcst.edge(node_type( 1,  1), 10));
-    EXPECT_EQ('i', fcst.edge(node_type( 1,  1), 11));
-    EXPECT_EQ('\0',fcst.edge(node_type( 1,  1), 12));
+    EXPECT_EQ('\0',fcst.edge(fcst.node( 0,  0), 1));
+    EXPECT_EQ('M', fcst.edge(fcst.node( 1,  1), 1));
+    EXPECT_EQ('i', fcst.edge(fcst.node( 1,  1), 2));
+    EXPECT_EQ('s', fcst.edge(fcst.node( 1,  1), 3));
+    EXPECT_EQ('p', fcst.edge(fcst.node( 1,  1), 10));
+    EXPECT_EQ('i', fcst.edge(fcst.node( 1,  1), 11));
+    EXPECT_EQ('\0',fcst.edge(fcst.node( 1,  1), 12));
 }
 
 const char road_not_taken[] = "TWO roads diverged in a yellow wood,\

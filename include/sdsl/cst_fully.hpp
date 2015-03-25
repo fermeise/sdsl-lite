@@ -205,6 +205,11 @@ public:
         return node_type(i - 1, i - 1);
     }
 
+//! Get the node in the suffix tree which corresponds to the sa-interval [lb..rb]
+    node_type node(size_type lb, size_type rb) const {
+        return node_type(lb, rb);
+    }
+
 //! Returns the leftmost leaf (left boundary) of a node.
     leaf_type lb(node_type v) const {
         return v.first;
@@ -463,13 +468,17 @@ public:
 
         size_type d = depth(v);
 
-        if(64 * log(v.second + 1 - v.first) < (2 + log2(m_csa.sigma) * d)) {
+        // This assumes text_order_sampling
+        size_type child_1_time = (m_csa.sa_sample_dens + m_csa.isa_sample_dens) / 2 * bits::hi(v.second - v.first + 1);
+        size_type child_2_time = 3 * d + 1;
+
+        /*if(child_1_time <= child_2_time) {
             return child_1(v, c, d);
         } else {
             return child_2(v, c, d);
-        }
+        }*/
 
-        //return child_1(v, c, d);
+        return child_1(v, c, d);
     }
 
 //! Get the child w of node v which edge label (v,w) starts with character c.

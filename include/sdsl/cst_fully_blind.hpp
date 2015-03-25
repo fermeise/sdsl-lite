@@ -258,6 +258,11 @@ public:
         return node_type(i - 1, i - 1);
     }
 
+//! Get the node in the suffix tree which corresponds to the sa-interval [lb..rb]
+    node_type node(size_type lb, size_type rb) const {
+        return node_type(lb, rb);
+    }
+
 //! Returns the leftmost leaf (left boundary) of a node.
     leaf_type lb(node_type v) const {
         return v.first;
@@ -439,6 +444,7 @@ public:
     }
 
 //! Calculate the depth of the LCA of two leaves l and r.
+//! In case SDepth(SLink^i([l, r])) + i is maximal for different values of i, the smallest value of i is chosen.
         /*!
          * \param l The index of leaf l.
          * \param r The index of leaf r. \f$ r > l \f$
@@ -461,7 +467,6 @@ public:
             sampled_node_type node = lcsa(lsa_leaf(l), lsa_leaf(r));
             size_type d = i + depth(node);
 
-            // TODO: Just for testing
             if(d > max_d) {
                 max_d = d;
                 max_d_i = i;
@@ -487,6 +492,18 @@ public:
         return max_d;
     }
 
+//! Calculate the depth of the LCA of two leaves l and r.
+//! In case SDepth(SLink^i([l, r])) + i is maximal for different values of i, the largest value of i is chosen.
+        /*!
+         * \param l The index of leaf l.
+         * \param r The index of leaf r. \f$ r > l \f$
+         * \param res_i The index i for the ancestor used to determine the depth (return value).
+         * \param res_u The ancestor used to determine the depth (return value).
+         * \param res_label The label from the found sampled node to the actual LCA.
+         * \return The depth of the LCA of l and r.
+         * \par Time complexity
+         *   \f$ \Order( \delta ) \f$
+         */
     size_type depth_lca_2(leaf_type l, leaf_type r,
                         size_type &res_i, sampled_node_type &res_u, std::vector<char_type> &res_label) const {
         assert(l<r);
@@ -566,72 +583,6 @@ public:
         return ancestor(right_parent, left_parent) ? left_parent : right_parent;
     }
 
-    /*node_type child(node_type v, char_type c) const {
-        if(is_leaf(v)) {
-            return root();
-        }
-
-        return child_1(v, c, depth(v));
-    }*/
-
-//! Get the child w of node v which edge label (v,w) starts with character c.
-        /*!
-         * \param v A node v.
-         * \param c First character of the edge label from v to the desired child.
-         * \return The child node w which edge label (v,w) starts with c or root() if it does not exist.
-         * \par Time complexity
-         *       \f$ \Order{ \log m \cdot (\saaccess+\isaaccess) } \f$
-                 where \f$ m \f$ is the number of leaves under node v.
-         */
-    node_type child_1(node_type v, char_type c, size_type d) const {
-        leaf_type res_lb;
-        leaf_type res_rb;
-
-        {
-            leaf_type left = v.first;
-            leaf_type right = v.second;
-
-            while(left < right) {
-                leaf_type sample_pos = (left + right) / 2;
-                char_type sample = m_csa.text[m_csa[sample_pos] + d];
-                if(sample == c) {
-                    right = sample_pos;
-                } else if(sample < c) {
-                    left = sample_pos + 1;
-                } else {
-                    right = sample_pos - 1;
-                }
-            }
-
-            if(m_csa.text[m_csa[left] + d] != c) {
-                return root();
-            }
-
-            res_lb = left;
-        }
-
-        {
-            leaf_type left = v.first;
-            leaf_type right = v.second;
-
-            while(left < right) {
-                leaf_type sample_pos = (left + right + 1) / 2;
-                char_type sample = m_csa.text[m_csa[sample_pos] + d];
-                if(sample == c) {
-                    left = sample_pos;
-                } else if(sample < c) {
-                    left = sample_pos + 1;
-                } else {
-                    right = sample_pos - 1;
-                }
-            }
-
-            res_rb = left;
-        }
-
-        return node_type(res_lb, res_rb);
-    }
-
     node_type child(node_type v, char_type c) const {
         if(is_leaf(v)) {
             return root();
@@ -652,18 +603,18 @@ public:
 
             backward_search(m_csa, l, r, c, l, r);
         } else {
-            const size_type width = bits::hi(m_csa.sigma-1)+1;
+            const size_type bits_per_char = bits::hi(m_csa.sigma - 1) + 1;
+            const auto comp = m_csa.char2comp[c];
             bin_node_type w = s_to_bin(u);
             do {
                 size_type pd = m_pd[m_bp_bin_support.rank(w) - 1];
-                auto comp = m_csa.char2comp[c];
-                bool second = (comp & (1 << (width - pd - 1)));
-                if(second) {
+                bool is_right_node = (comp & (1 << (bits_per_char - pd - 1)));
+                if(is_right_node) {
                     bin_node_type new_w = m_bp_bin_support.find_close(w + 1) + 1;
                     if(m_bp_bin[new_w]) {
                         w = new_w;
                     } else {
-                        // W has only one child
+                        // w has only one child
                         w++;
                     }
                 } else {
@@ -671,10 +622,9 @@ public:
                 }
             } while(m_in_st[m_bp_bin_support.rank(w) - 1] == 0);
 
-            node_type v2 = bin_node(w);
-            //node_type v2 = child_1(sampled_node(u), c, depth(u));
-            l = lb(v2);
-            r = rb(v2);
+            node_type u_c = bin_node(w);
+            l = lb(u_c);
+            r = rb(u_c);
 
             if(m_csa.text[m_csa[l] + depth(u)] != c) {
                 return root();
@@ -751,10 +701,10 @@ public:
 
 template<class t_csa, class t_s_support, class t_b, class t_depth, uint32_t t_delta, bool t_sample_leaves>
 cst_fully_blind<t_csa, t_s_support, t_b, t_depth, t_delta, t_sample_leaves>::cst_fully_blind(cache_config &config) {
-    // 1a. Construct SCT
+    // 1a. Construct CST
     cst_sada<t_csa, lcp_wt<> > cst(config);
 
-    // 1b. Construct SCT of binary tree
+    // 1b. Construct CST of binary tree
     rename(config.file_map[conf::KEY_LCP], config.file_map[conf::KEY_LCP] + ".tmp");
     rename(config.file_map[conf::KEY_BLCP], config.file_map[conf::KEY_LCP]);
     cst_sada<t_csa, lcp_wt<> > cst_bin(config);
@@ -783,7 +733,7 @@ cst_fully_blind<t_csa, t_s_support, t_b, t_depth, t_delta, t_sample_leaves>::cst
     is_sampled_s[cst.id(cst.root())] = true; // always sample root
     size_type sample_count_s = 1;
 
-    // 2a. Scan an mark leaves to be sampled
+    // 2a. Scan and mark leaves to be sampled
     if(t_sample_leaves) {
         auto event = memory_monitor::event("scan-leaves");
         for(auto it = csa_iterator_type::begin(cst.csa); it != csa_iterator_type::end(cst.csa); ++it) {

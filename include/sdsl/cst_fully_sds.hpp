@@ -220,6 +220,11 @@ public:
         return node_type(i - 1, i - 1);
     }
 
+//! Get the node in the suffix tree which corresponds to the sa-interval [lb..rb]
+    node_type node(size_type lb, size_type rb) const {
+        return node_type(lb, rb);
+    }
+
 //! Returns the leftmost leaf (left boundary) of a node.
     leaf_type lb(node_type v) const {
         return v.first;
