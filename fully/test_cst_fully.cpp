@@ -211,8 +211,8 @@ typedef ::testing::Types<
     cst_fully<csa_wt<>, bp_support_sada<>, sd_vector<>, dac_vector<>, 8, false>,
     cst_fully<csa_wt<>, bp_support_sada<>, sd_vector<>, dac_vector<>, 10, false>,
     cst_fully_sds<csa_wt<>, bp_support_sada<>, sd_vector<>, dac_vector<>, sd_vector<>, 4>,
+    cst_sada_blind<csa_wt<>, lcp_wt<> >,
     cst_fully_blind<csa_wt<>, bp_support_sada<>, sd_vector<>, dac_vector<>, 4, false>
-    //,cst_sada_blind<csa_wt<>, lcp_wt<> >
     > BlackboxTestTypes;
 typedef cst_sada<> ref_cst_type;
 
@@ -384,6 +384,11 @@ TYPED_TEST(CstFullyBlackboxTest, ChildTest) {
     EXPECT_EQ(fcst.root(),       fcst.child(fcst.node( 2,  5), 'i'));
     EXPECT_EQ(fcst.root(),       fcst.child(fcst.node( 6,  7), 's'));
     EXPECT_EQ(fcst.root(),       fcst.child(fcst.node( 8, 11), 'p'));
+
+    EXPECT_EQ(fcst.root(),       fcst.child(fcst.node( 2,  5), 'a'));
+    EXPECT_EQ(fcst.root(),       fcst.child(fcst.node( 6,  7), 'q'));
+    EXPECT_EQ(fcst.root(),       fcst.child(fcst.node( 8, 11), 'w'));
+    EXPECT_EQ(fcst.root(),       fcst.child(fcst.node( 0, 11), 'z'));
 }
 
 TYPED_TEST(CstFullyBlackboxTest, SelectChildTest) {
