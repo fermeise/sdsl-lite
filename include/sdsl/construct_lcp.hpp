@@ -199,9 +199,7 @@ void construct_lcp_PHI(cache_config& config)
  *         CPM 2009: 181-192
  */
 template<uint8_t t_width, class t_alphabet>
-void construct_blcp_PHI(cache_config& config,
-                        typename t_alphabet::char2comp_type& char2comp,
-                        typename t_alphabet::sigma_type& sigma)
+void construct_blcp_PHI(cache_config& config, const t_alphabet& alphabet)
 {
     static_assert(t_width == 0 or t_width == 8 , "construct_blcp_PHI: width must be `0` for integer alphabet and `8` for byte alphabet");
     typedef int_vector<>::size_type size_type;
@@ -209,7 +207,7 @@ void construct_blcp_PHI(cache_config& config,
     const char* KEY_TEXT = key_text_trait<t_width>::KEY_TEXT;
     int_vector_buffer<> sa_buf(cache_file_name(conf::KEY_SA, config));
     size_type n = sa_buf.size();
-    const size_type width = bits::hi(sigma-1)+1;
+    const size_type width = bits::hi(alphabet.sigma-1)+1;
 
     assert(n > 0);
     if (1 == n) {  // Handle special case: Input only the sentinel character.
@@ -239,8 +237,8 @@ void construct_blcp_PHI(cache_config& config,
             ++l;
             k = 0;
         }
-        const typename t_alphabet::comp_char_type c_i = char2comp[text[i+l]];
-        const typename t_alphabet::comp_char_type c_phii = char2comp[text[phii+l]];
+        const typename t_alphabet::comp_char_type c_i = alphabet.char2comp[text[i+l]];
+        const typename t_alphabet::comp_char_type c_phii = alphabet.char2comp[text[phii+l]];
         while ((c_i & (1 << (width - k - 1))) == (c_phii & (1 << (width - k - 1)))) {
             ++k;
         }

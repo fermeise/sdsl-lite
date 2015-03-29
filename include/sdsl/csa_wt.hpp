@@ -81,6 +81,7 @@ class csa_wt
                       "Sixth template argument has to be a alphabet strategy.");
 
         friend class bwt_of_csa_wt<csa_wt>;
+        template<class T> friend void construct(T&, const std::string&, cache_config&, uint8_t, bcst_tag);
     public:
         enum { sa_sample_dens = t_dens,
                isa_sample_dens = t_inv_dens

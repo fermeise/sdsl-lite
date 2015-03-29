@@ -58,6 +58,7 @@ template<class t_alphabet_strat=byte_alphabet>
 class csa_bitcompressed
 {
         friend class bwt_of_csa_psi<csa_bitcompressed>;
+        template<class T> friend void construct(T&, const std::string&, cache_config&, uint8_t, bcst_tag);
     public:
         typedef uint64_t                                        value_type;    // STL Container requirement
         typedef random_access_const_iterator<csa_bitcompressed> const_iterator;// STL Container requirement

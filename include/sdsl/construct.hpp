@@ -212,8 +212,7 @@ void construct(t_index& idx, const std::string& file, cache_config& config, uint
     const char* KEY_TEXT = key_text_trait<t_index::alphabet_category::WIDTH>::KEY_TEXT;
     const char* KEY_BWT  = key_bwt_trait<t_index::alphabet_category::WIDTH>::KEY_BWT;
     csa_tag csa_t;
-    typename t_index::csa_type::alphabet_type::char2comp_type char2comp;
-    typename t_index::csa_type::alphabet_type::sigma_type     sigma;
+    typename t_index::csa_type::alphabet_type alphabet;
     {
         // (1) check, if the compressed suffix array is cached
         typename t_index::csa_type csa;
@@ -227,8 +226,7 @@ void construct(t_index& idx, const std::string& file, cache_config& config, uint
             load_from_cache(csa, std::string(conf::KEY_CSA)+"_"+util::class_to_hash(csa), config);
         }
         register_cache_file(std::string(conf::KEY_CSA)+"_"+util::class_to_hash(csa), config);
-        char2comp = csa.char2comp;
-        sigma = csa.sigma;
+        alphabet = csa.m_alphabet;
     }
     {
         // (2) check, if the longest common prefix array is cached
@@ -238,7 +236,7 @@ void construct(t_index& idx, const std::string& file, cache_config& config, uint
         register_cache_file(conf::KEY_SA, config);
         if (!cache_file_exists(conf::KEY_LCP, config)) {
             construct_blcp_PHI<t_index::alphabet_category::WIDTH,
-                               typename t_index::csa_type::alphabet_type>(config, char2comp, sigma);
+                               typename t_index::csa_type::alphabet_type>(config, alphabet);
         }
         register_cache_file(conf::KEY_LCP, config);
     }
