@@ -1,6 +1,5 @@
 #include <sdsl/suffix_trees.hpp>
-#include <fstream>
-#include <string>
+#include <iostream>
 
 using namespace sdsl;
 
@@ -9,7 +8,9 @@ typedef CST_TYPE cst_type;
 
 int main(int argc, char **argv) {
     if(argc < 5) {
-        std::cout << "Usage: " << argv[0] << " input_file tmp_dir fcst_file cst_file" << endl;
+        std::cout << "Usage: " << argv[0] << " input_file tmp_dir fcst_file cst_file" << std::endl;
+        std::cout << " Generates two CSTs (with the same CSA) and stores them in fcst_file" << std::endl;
+        std::cout << " and cst_file. Temporary files are stored in tmp_dir." << std::endl;
         return 1;
     }
 
@@ -23,8 +24,8 @@ int main(int argc, char **argv) {
 
     {
         cache_config config(true, tmp_dir);
-        construct(cst, input_file, config, 1);
-        construct(fcst, input_file, config, 1);
+        construct(cst, input_file, config, cst_type::alphabet_category::WIDTH == 8 ? 1 : 0);
+        construct(fcst, input_file, config, cst_type::alphabet_category::WIDTH == 8 ? 1 : 0);
     }
 
     store_to_file(cst, cst_file);
