@@ -588,6 +588,11 @@ public:
             return root();
         }
 
+        const auto cc = m_csa.char2comp[c];
+        if (cc==0 and c!= 0) {
+            return root();
+        }
+
         size_type l = lb(v);
         size_type r = rb(v);
 
@@ -604,11 +609,10 @@ public:
             backward_search(m_csa, l, r, c, l, r);
         } else {
             const size_type bits_per_char = bits::hi(m_csa.sigma - 1) + 1;
-            const auto comp = m_csa.char2comp[c];
             bin_node_type w = s_to_bin(u);
             do {
                 size_type pd = m_pd[m_bp_bin_support.rank(w) - 1];
-                bool is_right_node = (comp & (1 << (bits_per_char - pd - 1)));
+                bool is_right_node = (cc & (1 << (bits_per_char - pd - 1)));
                 if(is_right_node) {
                     bin_node_type new_w = m_bp_bin_support.find_close(w + 1) + 1;
                     if(m_bp_bin[new_w]) {
@@ -701,15 +705,8 @@ public:
 
 template<class t_csa, class t_s_support, class t_b, class t_depth, uint32_t t_delta, bool t_sample_leaves>
 cst_fully_blind<t_csa, t_s_support, t_b, t_depth, t_delta, t_sample_leaves>::cst_fully_blind(cache_config &config) {
-    // 1a. Construct CST
-    cst_sada<t_csa, lcp_wt<> > cst(config);
-
-    // 1b. Construct CST of binary tree
-    rename(config.file_map[conf::KEY_LCP], config.file_map[conf::KEY_LCP] + ".tmp");
-    rename(config.file_map[conf::KEY_BLCP], config.file_map[conf::KEY_LCP]);
-    cst_sada<t_csa, lcp_wt<> > cst_bin(config);
-    rename(config.file_map[conf::KEY_LCP], config.file_map[conf::KEY_BLCP]);
-    rename(config.file_map[conf::KEY_LCP] + ".tmp", config.file_map[conf::KEY_LCP]);
+    // 1. Construct blind CST
+    cst_sada_blind<t_csa, lcp_wt<> > cst(config);
 
     if(t_delta > 0) {
         m_delta = t_delta;
@@ -790,63 +787,51 @@ cst_fully_blind<t_csa, t_s_support, t_b, t_depth, t_delta, t_sample_leaves>::cst
     }
 
     // 3. Choose sampled pseudo-nodes (so the sampled tree forms a binary tree)
-    struct entry_type {
-        entry_type(size_type _node_count, size_type _carry)
-        : node_count(_node_count), carry(_carry) {}
-        size_type node_count;
-        size_type carry;
-    };
+    std::stack<size_type> stack;
+    stack.push(0);
 
-    bit_vector is_sampled_bin(cst_bin.nodes(), false);
-    size_type sample_count_bin = 0;
+    for (auto it=cst.begin_bin(), end=cst.end_bin(); it!=end; ++it) {
+        bool in_cst = cst.is_suffix_node(*it);
 
-    std::stack<entry_type> stack;
-    stack.push(entry_type(0, 0));
-
-    for (auto it=cst_bin.begin(), end=cst_bin.end(), it2=cst.begin(), end2=cst.end(); it!=end; ++it) {
-        bool in_cst = cst_bin.lb(*it) == cst.lb(*it2) && cst_bin.rb(*it) == cst.rb(*it2);
-
-        if(cst_bin.is_leaf(*it)) {
-            if(in_cst && is_sampled[cst.id(*it2)]) {
-                is_sampled_bin[cst_bin.id(*it)] = 1;
-                sample_count_bin++;
-                stack.top().node_count++;
+        if(cst.is_leaf(*it)) {
+            if(is_sampled[cst.id(*it)]) {
+                stack.top()++;
             }
         } else {
             if(1 == it.visit()) {
-                stack.push(entry_type(0, 0));
+                stack.push(0);
             }
             if(2 == it.visit()) {
-                if(stack.top().node_count == 2 || (in_cst && is_sampled[cst.id(*it2)])) {
-                    is_sampled_bin[cst_bin.id(*it)] = 1;
-                    sample_count_bin++;
+                if(in_cst && is_sampled[cst.id(*it)]) {
                     stack.pop();
-                    stack.top().node_count++;
-                } else if(stack.top().node_count == 1) {
+                    stack.top()++;
+                } else if(stack.top() == 2) {
+                    is_sampled[cst.id(*it)] = 1;
+                    sample_count++;
                     stack.pop();
-                    stack.top().node_count++;
+                    stack.top()++;
+                } else if(stack.top() == 1) {
+                    stack.pop();
+                    stack.top()++;
                 } else {
                     stack.pop();
                 }
             }
         }
-        if(in_cst) {
-            ++it2;
-        }
     }
 
     // 4. Create sampled tree data structures
-    const size_type width = bits::hi(cst_bin.csa.sigma-1)+1;
+    const size_type width = bits::hi(cst.csa.sigma-1)+1;
 
     bit_vector tmp_b;
     int_vector<64> tmp_depth;
 
-    m_bp_bin.resize(2 * sample_count_bin);
-    tmp_b.resize(2 * sample_count_bin + cst.size());
+    m_bp_bin.resize(2 * sample_count);
+    tmp_b.resize(2 * sample_count + cst.size());
     m_pd.width(bits::hi(width-1)+1);
-    m_pd.resize(sample_count_bin);
-    m_in_st.resize(sample_count_bin);
-    m_in_s.resize(2 * sample_count_bin);
+    m_pd.resize(sample_count);
+    m_in_st.resize(sample_count);
+    m_in_s.resize(2 * sample_count);
     m_s.resize(2 * sample_count_s);
     tmp_depth.resize(sample_count_s);
 
@@ -858,52 +843,40 @@ cst_fully_blind<t_csa, t_s_support, t_b, t_depth, t_delta, t_sample_leaves>::cst
     size_type s_idx = 0;
     size_type depth_idx = 0;
 
-    for (auto it=cst_bin.begin(), end=cst_bin.end(), it2=cst.begin(), end2=cst.end(); it!=end; ++it) {
-        bool in_cst = cst_bin.lb(*it) == cst.lb(*it2) && cst_bin.rb(*it) == cst.rb(*it2);
+    for (auto it=cst.begin_bin(), end=cst.end_bin(); it!=end; ++it) {
+        bool in_cst = cst.is_suffix_node(*it);
 
-        if(it.visit() == 1 && is_sampled_bin[cst_bin.id(*it)]) {
+        if(it.visit() == 1 && is_sampled[cst.id(*it)]) {
             m_bp_bin[bp_bin_idx++] = 1;
             tmp_b[b_idx++] = 1;
-            if(cst_bin.is_leaf(*it)) {
+            if(cst.is_leaf(*it)) {
                 m_pd[pd_idx++] = 0;
             } else {
-                size_type d = cst_bin.depth(*it);
-                // Dirty hack to get the depth of the node in bits
-                if(cst_bin.is_leaf(*it)) {
-                    d *= width;
-                }
+                size_type d = cst.depth_bin(*it);
                 m_pd[pd_idx++] = d % width;
             }
             m_in_st[in_st_idx++] = (in_cst ? 1 : 0);
-            if(in_cst && is_sampled_s[cst.id(*it2)]) {
+            if(in_cst && is_sampled_s[cst.id(*it)]) {
                 m_in_s[in_s_idx++] = 1;
                 m_s[s_idx++] = 1;
-                size_type d = cst_bin.depth(*it);
-                // Dirty hack to get the depth of the node in characters
-                if(!cst_bin.is_leaf(*it) && *it != cst.root()) {
-                    d /= width;
-                }
+                size_type d = cst.depth(*it);
                 tmp_depth[depth_idx++] = d / delta_half;
             } else {
                 m_in_s[in_s_idx++] = 0;
             }
         }
-        if(cst_bin.is_leaf(*it)) {
+        if(cst.is_leaf(*it)) {
             tmp_b[b_idx++] = 0;
         }
-        if((cst_bin.is_leaf(*it) || it.visit() == 2) && is_sampled_bin[cst_bin.id(*it)]) {
+        if((cst.is_leaf(*it) || it.visit() == 2) && is_sampled[cst.id(*it)]) {
             m_bp_bin[bp_bin_idx++] = 0;
             tmp_b[b_idx++] = 1;
-            if(in_cst && is_sampled_s[cst.id(*it2)]) {
+            if(in_cst && is_sampled_s[cst.id(*it)]) {
                 m_in_s[in_s_idx++] = 1;
                 m_s[s_idx++] = 0;
             } else {
                 m_in_s[in_s_idx++] = 0;
             }
-        }
-
-        if(in_cst) {
-            ++it2;
         }
     }
 
