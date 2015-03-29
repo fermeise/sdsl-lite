@@ -11,10 +11,10 @@
 namespace sdsl {
 
 template<class t_csa = csa_wt<>,
+         uint32_t t_delta = 0,
          class t_s_support = bp_support_sada<>,
          class t_b = sd_vector<>,
          class t_depth = dac_vector<>,
-         uint32_t t_delta = 0,
          bool t_sample_leaves = false
          >
 class cst_fully {
@@ -779,8 +779,8 @@ public:
     }
 };
 
-template<class t_csa, class t_s_support, class t_b, class t_depth, uint32_t t_delta, bool t_sample_leaves>
-cst_fully<t_csa, t_s_support, t_b, t_depth, t_delta, t_sample_leaves>::cst_fully(cache_config &config) {
+template<class t_csa, uint32_t t_delta, class t_s_support, class t_b, class t_depth, bool t_sample_leaves>
+cst_fully<t_csa, t_delta, t_s_support, t_b, t_depth, t_sample_leaves>::cst_fully(cache_config &config) {
     cst_sada<csa_type, lcp_wt<> > cst(config);
 
     if(t_delta > 0) {
@@ -877,28 +877,6 @@ cst_fully<t_csa, t_s_support, t_b, t_depth, t_delta, t_sample_leaves>::cst_fully
         util::init_support(m_b_select1, &m_b);
         m_depth = depth_type(tmp_depth);
     }
-}
-
-template<class t_csa,
-         class t_s_support,
-         class t_b,
-         class t_depth
-         >
-std::ostream& operator<< (std::ostream &out, const cst_fully<t_csa, t_s_support, t_b, t_depth> &cst) {
-    typedef typename cst_fully<t_csa, t_s_support, t_b, t_depth>::size_type size_type;
-
-    size_type leaf_idx = 0;
-    size_type s_idx = 0;
-
-    for(auto value: cst.b) {
-        if(value) {
-            out << (cst.s[s_idx++] ? "(" : ")");
-        } else {
-            out << leaf_idx++;
-        }
-    }
-
-    return out;
 }
 
 }// end namespace sdsl

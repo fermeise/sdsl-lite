@@ -11,10 +11,10 @@
 namespace sdsl {
 
 template<class t_csa = csa_wt<>,
+         uint32_t t_delta = 0,
          class t_bp_support = bp_support_sada<>,
          class t_b = sd_vector<>,
          class t_depth = dac_vector<>,
-         uint32_t t_delta = 0,
          bool t_sample_leaves = false
          >
 class cst_fully_blind {
@@ -703,8 +703,8 @@ public:
     }
 };
 
-template<class t_csa, class t_s_support, class t_b, class t_depth, uint32_t t_delta, bool t_sample_leaves>
-cst_fully_blind<t_csa, t_s_support, t_b, t_depth, t_delta, t_sample_leaves>::cst_fully_blind(cache_config &config) {
+template<class t_csa, uint32_t t_delta, class t_s_support, class t_b, class t_depth, bool t_sample_leaves>
+cst_fully_blind<t_csa, t_delta, t_s_support, t_b, t_depth, t_sample_leaves>::cst_fully_blind(cache_config &config) {
     // 1. Construct blind CST
     cst_sada_blind<t_csa, lcp_wt<> > cst(config);
 

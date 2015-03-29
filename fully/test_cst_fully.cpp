@@ -5,7 +5,7 @@
 using namespace sdsl;
 
 TEST(CstFullyWhiteboxTest, LsaLeafTest) {
-    cst_fully<csa_wt<>, bp_support_sada<>, sd_vector<>, dac_vector<>, 4, true> fcst;
+    cst_fully<csa_wt<>, 4, bp_support_sada<>, sd_vector<>, dac_vector<>, true> fcst;
 
     construct_im(fcst, "abbbab", 1);
 
@@ -20,7 +20,7 @@ TEST(CstFullyWhiteboxTest, LsaLeafTest) {
 }
 
 TEST(CstFullyWhiteboxTest, LsaLeafTest2) {
-    cst_fully<csa_wt<>, bp_support_sada<>, sd_vector<>, dac_vector<>, 4, true> fcst;
+    cst_fully<csa_wt<>, 4, bp_support_sada<>, sd_vector<>, dac_vector<>, true> fcst;
 
     construct_im(fcst, "Mississippi", 1);
 
@@ -40,7 +40,7 @@ TEST(CstFullyWhiteboxTest, LsaLeafTest2) {
 }
 
 TEST(CstFullyWhiteboxTest, LsaLeafTest3) {
-    cst_fully<csa_wt<>, bp_support_sada<>, sd_vector<>, dac_vector<>, 2, true> fcst;
+    cst_fully<csa_wt<>, 2, bp_support_sada<>, sd_vector<>, dac_vector<>, true> fcst;
 
     construct_im(fcst, "Mississippi", 1);
 
@@ -60,7 +60,7 @@ TEST(CstFullyWhiteboxTest, LsaLeafTest3) {
 }
 
 TEST(CstFullyWhiteboxTest, LsaLeafTest4) {
-    cst_fully<csa_wt<>, bp_support_sada<>, sd_vector<>, dac_vector<>, 4, false> fcst;
+    cst_fully<csa_wt<>, 4, bp_support_sada<>, sd_vector<>, dac_vector<>, false> fcst;
 
     construct_im(fcst, "Mississippi", 1);
 
@@ -80,7 +80,7 @@ TEST(CstFullyWhiteboxTest, LsaLeafTest4) {
 }
 
 TEST(CstFullyWhiteboxTest, SampledNodeTest) {
-    cst_fully<csa_wt<>, bp_support_sada<>, sd_vector<>, dac_vector<>, 4, true> fcst;
+    cst_fully<csa_wt<>, 4, bp_support_sada<>, sd_vector<>, dac_vector<>, true> fcst;
     typedef typename decltype(fcst)::node_type node_type;
 
     construct_im(fcst, "abbbab", 1);
@@ -91,7 +91,7 @@ TEST(CstFullyWhiteboxTest, SampledNodeTest) {
 }
 
 TEST(CstFullyWhiteboxTest, SampledNodeTest2) {
-    cst_fully<csa_wt<>, bp_support_sada<>, sd_vector<>, dac_vector<>, 4, true> fcst;
+    cst_fully<csa_wt<>, 4, bp_support_sada<>, sd_vector<>, dac_vector<>, true> fcst;
     typedef typename decltype(fcst)::node_type node_type;
 
     construct_im(fcst, "Mississippi", 1);
@@ -105,7 +105,7 @@ TEST(CstFullyWhiteboxTest, SampledNodeTest2) {
 }
 
 TEST(CstFullyWhiteboxTest, SampledNodeTest3) {
-    cst_fully<csa_wt<>, bp_support_sada<>, sd_vector<>, dac_vector<>, 4, false> fcst;
+    cst_fully<csa_wt<>, 4, bp_support_sada<>, sd_vector<>, dac_vector<>, false> fcst;
     typedef typename decltype(fcst)::node_type node_type;
 
     construct_im(fcst, "Mississippi", 1);
@@ -115,7 +115,7 @@ TEST(CstFullyWhiteboxTest, SampledNodeTest3) {
 }
 
 TEST(CstFullyWhiteboxTest, SampledDepthTest) {
-    cst_fully<csa_wt<>, bp_support_sada<>, sd_vector<>, dac_vector<>, 4, true> fcst;
+    cst_fully<csa_wt<>, 4, bp_support_sada<>, sd_vector<>, dac_vector<>, true> fcst;
 
     construct_im(fcst, "abbbab", 1);
 
@@ -125,7 +125,7 @@ TEST(CstFullyWhiteboxTest, SampledDepthTest) {
 }
 
 TEST(CstFullyWhiteboxTest, SampledDepthTest2) {
-    cst_fully<csa_wt<>, bp_support_sada<>, sd_vector<>, dac_vector<>, 4, true> fcst;
+    cst_fully<csa_wt<>, 4, bp_support_sada<>, sd_vector<>, dac_vector<>, true> fcst;
 
     construct_im(fcst, "Mississippi", 1);
 
@@ -138,7 +138,7 @@ TEST(CstFullyWhiteboxTest, SampledDepthTest2) {
 }
 
 TEST(CstFullyWhiteboxTest, SampledDepthTest3) {
-    cst_fully<csa_wt<>, bp_support_sada<>, sd_vector<>, dac_vector<>, 4, false> fcst;
+    cst_fully<csa_wt<>, 4, bp_support_sada<>, sd_vector<>, dac_vector<>, false> fcst;
 
     construct_im(fcst, "Mississippi", 1);
 
@@ -147,7 +147,7 @@ TEST(CstFullyWhiteboxTest, SampledDepthTest3) {
 }
 
 TEST(CstFullyWhiteboxTest, LCSATest) {
-    cst_fully<csa_wt<>, bp_support_sada<>, sd_vector<>, dac_vector<>, 4, true> fcst;
+    cst_fully<csa_wt<>, 4, bp_support_sada<>, sd_vector<>, dac_vector<>, true> fcst;
 
     construct_im(fcst, "abbbab", 1);
 
@@ -160,7 +160,7 @@ TEST(CstFullyWhiteboxTest, LCSATest) {
 }
 
 TEST(CstFullyWhiteboxTest, LCSATest2) {
-    cst_fully<csa_wt<>, bp_support_sada<>, sd_vector<>, dac_vector<>, 4, true> fcst;
+    cst_fully<csa_wt<>, 4, bp_support_sada<>, sd_vector<>, dac_vector<>, true> fcst;
 
     construct_im(fcst, "Mississippi", 1);
 
@@ -180,7 +180,7 @@ TEST(CstFullyWhiteboxTest, LCSATest2) {
 }
 
 TEST(CstFullyWhiteboxTest, LCSATest3) {
-    cst_fully<csa_wt<>, bp_support_sada<>, sd_vector<>, dac_vector<>, 4, true> fcst;
+    cst_fully<csa_wt<>, 4, bp_support_sada<>, sd_vector<>, dac_vector<>, true> fcst;
 
     construct_im(fcst, " as far as I c as j as fai", 1);
 
@@ -190,7 +190,7 @@ TEST(CstFullyWhiteboxTest, LCSATest3) {
 }
 
 TEST(CstFullyWhiteboxTest, LCSATest4) {
-    cst_fully<csa_wt<>, bp_support_sada<>, sd_vector<>, dac_vector<>, 4, false> fcst;
+    cst_fully<csa_wt<>, 4, bp_support_sada<>, sd_vector<>, dac_vector<>, false> fcst;
 
     construct_im(fcst, "Mississippi", 1);
 
@@ -205,14 +205,14 @@ class CstFullyBlackboxTest : public ::testing::Test {
 };
 
 typedef ::testing::Types<
-    cst_fully<csa_wt<>, bp_support_sada<>, sd_vector<>, dac_vector<>, 2, false>,
-    cst_fully<csa_wt<>, bp_support_sada<>, sd_vector<>, dac_vector<>, 4, false>,
-    cst_fully<csa_wt<>, bp_support_sada<>, sd_vector<>, dac_vector<>, 6, false>,
-    cst_fully<csa_wt<>, bp_support_sada<>, sd_vector<>, dac_vector<>, 8, false>,
-    cst_fully<csa_wt<>, bp_support_sada<>, sd_vector<>, dac_vector<>, 10, false>,
-    cst_fully_sds<csa_wt<>, bp_support_sada<>, sd_vector<>, dac_vector<>, sd_vector<>, 4>,
+    cst_fully<csa_wt<>, 2>,
+    cst_fully<csa_wt<>, 4>,
+    cst_fully<csa_wt<>, 6>,
+    cst_fully<csa_wt<>, 8>,
+    cst_fully<csa_wt<>, 10>,
+    cst_fully_sds<csa_wt<>, 4>,
     cst_sada_blind<csa_wt<>, lcp_wt<> >,
-    cst_fully_blind<csa_wt<>, bp_support_sada<>, sd_vector<>, dac_vector<>, 4, false>
+    cst_fully_blind<csa_wt<>, 4>
     > BlackboxTestTypes;
 typedef cst_sada<> ref_cst_type;
 

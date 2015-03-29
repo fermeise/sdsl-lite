@@ -11,11 +11,11 @@
 namespace sdsl {
 
 template<class t_csa = csa_wt<>,
+         uint32_t t_delta = 0,
          class t_s_support = bp_support_sada<>,
          class t_b = sd_vector<>,
          class t_depth = dac_vector<>,
-         class t_depth_mask = sd_vector<>,
-         uint32_t t_delta = 0
+         class t_depth_mask = sd_vector<>
          >
 class cst_fully_sds {
 public:
@@ -623,8 +623,8 @@ public:
     }
 };
 
-template<class t_csa, class t_s_support, class t_b, class t_depth, class t_depth_mask, uint32_t t_delta>
-cst_fully_sds<t_csa, t_s_support, t_b, t_depth, t_depth_mask, t_delta>::cst_fully_sds(cache_config &config) {
+template<class t_csa, uint32_t t_delta, class t_s_support, class t_b, class t_depth, class t_depth_mask>
+cst_fully_sds<t_csa, t_delta, t_s_support, t_b, t_depth, t_depth_mask>::cst_fully_sds(cache_config &config) {
     cst_sada<csa_type, lcp_wt<> > cst(config);
 
     if(t_delta > 0) {
@@ -740,28 +740,6 @@ cst_fully_sds<t_csa, t_s_support, t_b, t_depth, t_depth_mask, t_delta>::cst_full
         m_depth_mask = depth_mask_type(tmp_depth_mask);
         util::init_support(m_depth_mask_rank1, &m_depth_mask);
     }
-}
-
-template<class t_csa,
-         class t_s_support,
-         class t_b,
-         class t_depth
-         >
-std::ostream& operator<< (std::ostream &out, const cst_fully_sds<t_csa, t_s_support, t_b, t_depth> &cst) {
-    typedef typename cst_fully_sds<t_csa, t_s_support, t_b, t_depth>::size_type size_type;
-
-    size_type leaf_idx = 0;
-    size_type s_idx = 0;
-
-    for(auto value: cst.b) {
-        if(value) {
-            out << (cst.s[s_idx++] ? "(" : ")");
-        } else {
-            out << leaf_idx++;
-        }
-    }
-
-    return out;
 }
 
 }// end namespace sdsl
