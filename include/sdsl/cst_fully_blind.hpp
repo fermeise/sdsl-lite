@@ -722,12 +722,12 @@ cst_fully_blind<t_csa, t_s_support, t_b, t_depth, t_delta, t_sample_leaves>::cst
     size_type delta_half = m_delta / 2;
     typedef csa_iterator<t_csa> csa_iterator_type;
 
-    bit_vector is_sampled(cst.nodes(), false);
-    is_sampled[cst.id(cst.root())] = true; // always sample root
+    bit_vector is_sampled(cst.nodes_bin(), false);
+    is_sampled[cst.id_bin(cst.root())] = true; // always sample root
     size_type sample_count = 1;
 
-    bit_vector is_sampled_s(cst.nodes(), false);
-    is_sampled_s[cst.id(cst.root())] = true; // always sample root
+    bit_vector is_sampled_s(cst.nodes_bin(), false);
+    is_sampled_s[cst.id_bin(cst.root())] = true; // always sample root
     size_type sample_count_s = 1;
 
     // 2a. Scan and mark leaves to be sampled
@@ -738,7 +738,7 @@ cst_fully_blind<t_csa, t_s_support, t_b, t_depth, t_delta, t_sample_leaves>::cst
             if(d + delta_half <= cst.size() and
                d % delta_half == 0) {
                 const auto node = cst.select_leaf(*it + 1);
-                const size_type id = cst.id(node);
+                const size_type id = cst.id_bin(node);
                 if(!is_sampled[id]) {
                     is_sampled[id] = true;
                     sample_count++;
@@ -763,7 +763,7 @@ cst_fully_blind<t_csa, t_s_support, t_b, t_depth, t_delta, t_sample_leaves>::cst
                     for(size_type i = 0; i < delta_half; i++) {
                         v = cst.sl(v);
                     }
-                    const size_type id = cst.id(v);
+                    const size_type id = cst.id_bin(v);
                     if(!is_sampled[id]) {
                         is_sampled[id] = true;
                         sample_count++;
@@ -775,7 +775,7 @@ cst_fully_blind<t_csa, t_s_support, t_b, t_depth, t_delta, t_sample_leaves>::cst
                     for(auto child = cst.select_child(node, 1); child != cst.root(); child = cst.sibling(child)) {
                         auto c = cst.edge(child, cst.depth(node) + 1);
                         auto child2 = cst.child(v, c);
-                        const size_type id2 = cst.id(child2);
+                        const size_type id2 = cst.id_bin(child2);
                         if(!is_sampled[id2]) {
                             is_sampled[id2] = true;
                             sample_count++;
@@ -794,7 +794,7 @@ cst_fully_blind<t_csa, t_s_support, t_b, t_depth, t_delta, t_sample_leaves>::cst
         bool in_cst = cst.is_suffix_node(*it);
 
         if(cst.is_leaf(*it)) {
-            if(is_sampled[cst.id(*it)]) {
+            if(is_sampled[cst.id_bin(*it)]) {
                 stack.top()++;
             }
         } else {
@@ -802,11 +802,11 @@ cst_fully_blind<t_csa, t_s_support, t_b, t_depth, t_delta, t_sample_leaves>::cst
                 stack.push(0);
             }
             if(2 == it.visit()) {
-                if(in_cst && is_sampled[cst.id(*it)]) {
+                if(in_cst && is_sampled[cst.id_bin(*it)]) {
                     stack.pop();
                     stack.top()++;
                 } else if(stack.top() == 2) {
-                    is_sampled[cst.id(*it)] = 1;
+                    is_sampled[cst.id_bin(*it)] = 1;
                     sample_count++;
                     stack.pop();
                     stack.top()++;
@@ -846,7 +846,7 @@ cst_fully_blind<t_csa, t_s_support, t_b, t_depth, t_delta, t_sample_leaves>::cst
     for (auto it=cst.begin_bin(), end=cst.end_bin(); it!=end; ++it) {
         bool in_cst = cst.is_suffix_node(*it);
 
-        if(it.visit() == 1 && is_sampled[cst.id(*it)]) {
+        if(it.visit() == 1 && is_sampled[cst.id_bin(*it)]) {
             m_bp_bin[bp_bin_idx++] = 1;
             tmp_b[b_idx++] = 1;
             if(cst.is_leaf(*it)) {
@@ -856,7 +856,7 @@ cst_fully_blind<t_csa, t_s_support, t_b, t_depth, t_delta, t_sample_leaves>::cst
                 m_pd[pd_idx++] = d % width;
             }
             m_in_st[in_st_idx++] = (in_cst ? 1 : 0);
-            if(in_cst && is_sampled_s[cst.id(*it)]) {
+            if(in_cst && is_sampled_s[cst.id_bin(*it)]) {
                 m_in_s[in_s_idx++] = 1;
                 m_s[s_idx++] = 1;
                 size_type d = cst.depth(*it);
@@ -868,10 +868,10 @@ cst_fully_blind<t_csa, t_s_support, t_b, t_depth, t_delta, t_sample_leaves>::cst
         if(cst.is_leaf(*it)) {
             tmp_b[b_idx++] = 0;
         }
-        if((cst.is_leaf(*it) || it.visit() == 2) && is_sampled[cst.id(*it)]) {
+        if((cst.is_leaf(*it) || it.visit() == 2) && is_sampled[cst.id_bin(*it)]) {
             m_bp_bin[bp_bin_idx++] = 0;
             tmp_b[b_idx++] = 1;
-            if(in_cst && is_sampled_s[cst.id(*it)]) {
+            if(in_cst && is_sampled_s[cst.id_bin(*it)]) {
                 m_in_s[in_s_idx++] = 1;
                 m_s[s_idx++] = 0;
             } else {

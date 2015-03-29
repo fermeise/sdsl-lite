@@ -74,7 +74,7 @@ public:
     node_type sl(node_type v) const {return m_cst->sl(v);}
 };
 
-//! A class for the Compressed Suffix Tree (CST) proposed by Sadakane.
+//! A class for a blind variant of the Compressed Suffix Tree (CST) proposed by Sadakane.
 /*!
  * \tparam t_csa       Type of a CSA (member of this type is accessible via
  *                     member `csa`, default class is sdsl::csa_sada).
@@ -90,12 +90,17 @@ public:
  *                      class is sdsl::select_support_mcl).
  *
  * It also contains a sdsl::bit_vector which represents the balanced
- * parentheses sequence of the suffix tree. This bit_vector can be accessed
- * via member `bp`.
+ * parentheses sequence of the binary suffix tree. This bit_vector can be
+ * accessed via member `bp`.
  *
- * A node `v` of the `csa_sada` is represented by an integer `i` which
+ * A node `v` of the `csa_sada_blind` is represented by an integer `i` which
  * corresponds to the position of the opening parenthesis of the parentheses
  * pair \f$(i,\mu(i))\f$ that corresponds to `v` in `bp`.
+ *
+ * All operations on cst_sada_blind behave like operations on cst_sada. In
+ * cases where the result is different if it is performed on the binary
+ * suffix tree instead of the regular suffix tree, there is a second
+ * with a suffix _bin that operates on the binary suffix tree.
  *
  * \par Reference
  *  Kunihiko Sadakane:
@@ -912,15 +917,15 @@ class cst_sada_blind
             return m_csa[m_bp_rank10(v)];
         }
 
-//! Computes a unique identification number for a node of the suffix tree in the range [0..nodes()-1]
+//! Computes a unique identification number for a node of the binary tree in the range [0..nodes_bin()-1]
         /*!
-         *\param v A valid node of a cst_sada.
-         * \return A unique identification number for the node v in the range [0..nodes()-1]
+         *\param v A valid node in the binary tree.
+         * \return A unique identification number for the node v in the range [0..nodes_bin()-1]
          * \par Time complexity
          *     \f$ \Order{1} \f$
          * \sa inv_id(size_type id)
          */
-        size_type id(node_type v)const
+        size_type id_bin(node_type v)const
         {
             // v+1 is < m_bp.size(), as v is the position of an open parenthesis
             if (m_bp[v+1]) {    // case (a) inner node
@@ -930,15 +935,15 @@ class cst_sada_blind
             }
         }
 
-//! Computes the node for such that id(v)=id.
+//! Computes the node for such that id_bin(v)=id.
         /*!
-         * \param id An id in the range [0..nodes()-1].
-         * \return A node v of the CST such that id(v)=id.
+         * \param id An id in the range [0..nodes_bin()-1].
+         * \return A node v in the binary tree such that id_bin(v)=id.
          * \par Time complexity
          *        \f$ \Order{1} \f$ for leaves and \f$ \log n \f$ for inner nodes
          * \sa id(node_type v)
          */
-        size_type inv_id(size_type id)
+        size_type inv_id_bin(size_type id)
         {
             if (id < size()) {  // the corresponding node is a leaf
                 return select_leaf(id+1);
@@ -970,7 +975,7 @@ class cst_sada_blind
          *  \par Time complexity
          *    \f$ \Order{1} \f$
          */
-        size_type nodes()const
+        size_type nodes_bin()const
         {
             return m_bp.size()>>1;
         }
