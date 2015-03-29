@@ -44,6 +44,36 @@
 namespace sdsl
 {
 
+//! Proxy class that performs all tree operations on the binary tree.
+template<class t_cst>
+class binary_tree_proxy {
+public:
+    typedef typename t_cst::size_type size_type;
+    typedef typename t_cst::char_type char_type;
+    typedef typename t_cst::node_type node_type;
+
+private:
+    const t_cst* m_cst;
+
+public:
+    binary_tree_proxy(const t_cst* cst) : m_cst(cst) {}
+
+    size_type size() const {return m_cst->size();}
+    node_type root() const {return m_cst->root();}
+    bool is_leaf(node_type v) const {return m_cst->is_leaf(v);}
+    node_type select_leaf(size_type i) const {return m_cst->select_leaf(i);}
+    size_type depth(node_type v) const {return m_cst->depth_bin(v);}
+    node_type leftmost_leaf(node_type v) const {return m_cst->leftmost_leaf(v);}
+    node_type rightmost_leaf(node_type v) const {return m_cst->rightmost_leaf(v);}
+    size_type lb(node_type v) const {return m_cst->lb(v);}
+    size_type rb(node_type v) const {return m_cst->rb(v);}
+    node_type parent(node_type v) const {return m_cst->parent_bin(v);}
+    node_type sibling(node_type v) const {return m_cst->sibling_bin(v);}
+    node_type select_child(node_type v, size_type i) const {return m_cst->select_child_bin(v, i);}
+    node_type lca(node_type v, node_type w) const {return m_cst->lca_bin(v, w);}
+    node_type sl(node_type v) const {return m_cst->sl(v);}
+};
+
 //! A class for the Compressed Suffix Tree (CST) proposed by Sadakane.
 /*!
  * \tparam t_csa       Type of a CSA (member of this type is accessible via
@@ -85,24 +115,25 @@ class cst_sada_blind
         static_assert(std::is_same<typename index_tag<t_csa>::type, csa_tag>::value,
                       "First template argument has to be a compressed suffix array.");
     public:
-        typedef cst_dfs_const_forward_iterator<cst_sada_blind>       const_iterator;
-        typedef cst_bottom_up_const_forward_iterator<cst_sada_blind> const_bottom_up_iterator;
-        typedef typename t_csa::size_type                            size_type;
-        typedef ptrdiff_t                                            difference_type;
-        typedef t_csa                                                csa_type;
-        typedef typename t_lcp::template type<cst_sada_blind>        lcp_type;
-        typedef typename t_csa::char_type                            char_type;
-        typedef typename t_csa::string_type                          string_type;
-        typedef size_type                                            node_type; //!< Type for the nodes  in the tree.
-        typedef t_bp_support                                         bp_support_type;
-        typedef t_rank_10                                            rank_10_type;
-        typedef t_select_10                                          select_10_type;
+        typedef cst_dfs_const_forward_iterator<cst_sada_blind>                    const_iterator;
+        typedef cst_bottom_up_const_forward_iterator<cst_sada_blind>              const_bottom_up_iterator;
+        typedef cst_dfs_const_forward_iterator<binary_tree_proxy<cst_sada_blind>> const_bin_iterator;
+        typedef typename t_csa::size_type                                         size_type;
+        typedef ptrdiff_t                                                         difference_type;
+        typedef t_csa                                                             csa_type;
+        typedef typename t_lcp::template type<cst_sada_blind>                     lcp_type;
+        typedef typename t_csa::char_type                                         char_type;
+        typedef typename t_csa::string_type                                       string_type;
+        typedef size_type                                                         node_type; //!< Type for the nodes  in the tree.
+        typedef t_bp_support                                                      bp_support_type;
+        typedef t_rank_10                                                         rank_10_type;
+        typedef t_select_10                                                       select_10_type;
 
-        typedef typename t_csa::alphabet_type::comp_char_type        comp_char_type;
-        typedef typename t_csa::alphabet_type::sigma_type            sigma_type;
+        typedef typename t_csa::alphabet_type::comp_char_type                     comp_char_type;
+        typedef typename t_csa::alphabet_type::sigma_type                         sigma_type;
 
-        typedef typename t_csa::alphabet_category                    alphabet_category;
-        typedef bcst_tag                                             index_category;
+        typedef typename t_csa::alphabet_category                                 alphabet_category;
+        typedef bcst_tag                                                          index_category;
     private:
         t_csa           m_csa; // suffix array
         lcp_type        m_lcp; // lcp information
@@ -110,6 +141,9 @@ class cst_sada_blind
         bp_support_type m_bp_support; // support for the balanced parentheses sequence
         rank_10_type    m_bp_rank10;  // rank_support for leaves, i.e. "10" bit pattern
         select_10_type  m_bp_select10;// select_support for leaves, i.e. "10" bit pattern
+        bit_vector      m_in_st; // for each opening paren in the BP: 1=CST node, 0=pseudo node
+        size_type       m_bits_per_char; // number of bits per character in the compressed alphabet
+        binary_tree_proxy<cst_sada_blind> m_bin_proxy;
 
         /* Get the number of leaves that are in the subtree rooted at the first child of v +
          * number of leafs in the subtrees rooted at the children of parent(v) which precede v in the tree.
@@ -130,6 +164,8 @@ class cst_sada_blind
             m_bp_rank10.set_vector(&m_bp);
             m_bp_select10   = cst.m_bp_select10;
             m_bp_select10.set_vector(&m_bp);
+            m_in_st         = cst.m_in_st;
+            m_bits_per_char = cst.m_bits_per_char;
         }
 
     public:
@@ -139,26 +175,30 @@ class cst_sada_blind
         const bp_support_type& bp_support   = m_bp_support;
         const rank_10_type&    bp_rank_10   = m_bp_rank10;
         const select_10_type&  bp_select_10 = m_bp_select10;
+        const bit_vector&      in_st        = m_in_st;
 
 //! Default constructor
-        cst_sada_blind() { }
+        cst_sada_blind() : m_bin_proxy(this) { }
 
 
 //! Copy constructor
         cst_sada_blind(const cst_sada_blind& cst)
-        {
+        : m_bin_proxy(this) {
             copy(cst);
         }
 
 //! Move constructor
         cst_sada_blind(cst_sada_blind&& cst)
-        {
+        : m_bin_proxy(this) {
             *this = std::move(cst);
         }
 
 //! Construct CST from file_map
         cst_sada_blind(cache_config& config)
-        {
+        : m_bin_proxy(this) {
+            // Use binary LCP array
+            rename(config.file_map[conf::KEY_LCP], config.file_map[conf::KEY_LCP] + ".tmp");
+            rename(config.file_map[conf::KEY_BLCP], config.file_map[conf::KEY_LCP]);
             {
                 auto event = memory_monitor::event("bps-dfs");
                 cst_sct3<> temp_cst(config, true);
@@ -189,7 +229,24 @@ class cst_sada_blind
             {
                 auto event = memory_monitor::event("load csa");
                 load_from_cache(m_csa,std::string(conf::KEY_CSA)+"_"+util::class_to_hash(m_csa), config);
+                m_bits_per_char = bits::hi(m_csa.sigma - 1) + 1;
             }
+            {
+                m_in_st.resize(m_bp.size()/2);
+                util::set_to_value(m_in_st, 0);
+                m_in_st[0] = 1;
+                size_type idx = 1;
+                for (node_type v = 1; v < m_bp.size(); v++) {
+                    if(m_bp[v]) {
+                        if(is_leaf(v) || depth(parent_bin(v)) != depth(v)) {
+                            m_in_st[idx] = 1;
+                        }
+                        idx++;
+                    }
+                }
+            }
+            rename(config.file_map[conf::KEY_LCP], config.file_map[conf::KEY_BLCP]);
+            rename(config.file_map[conf::KEY_LCP] + ".tmp", config.file_map[conf::KEY_LCP]);
         }
 
 //! Number of leaves in the suffix tree.
@@ -236,12 +293,14 @@ class cst_sada_blind
                 util::swap_support(m_bp_support, cst.m_bp_support, &m_bp, &(cst.m_bp));
                 util::swap_support(m_bp_rank10, cst.m_bp_rank10, &m_bp, &(cst.m_bp));
                 util::swap_support(m_bp_select10, cst.m_bp_select10, &m_bp, &(cst.m_bp));
+                m_in_st.swap(cst.m_in_st);
+                std::swap(m_bits_per_char, cst.m_bits_per_char);
                 // anything else has to be swapped before swapping lcp
                 swap_lcp(m_lcp, cst.m_lcp, *this, cst);
             }
         }
 
-//! Returns a const_iterator to the first element.
+//! Returns a const_iterator to the first element of the suffix tree.
         /*! Required for the STL Container Concept.
          *  \sa end
          */
@@ -250,6 +309,17 @@ class cst_sada_blind
             if (0 == m_bp.size())  // special case: tree is uninitialized
                 return end();
             return const_iterator(this, root(), false, true);
+        }
+
+//! Returns a const_iterator to the first element of the binary tree.
+        /*! Required for the STL Container Concept.
+         *  \sa end
+         */
+        const_bin_iterator begin_bin()const
+        {
+            if (0 == m_bp.size())  // special case: tree is uninitialized
+                return end_bin();
+            return const_bin_iterator(&m_bin_proxy, m_bin_proxy.root(), false, true);
         }
 
         //! Returns a const_iterator to the first element of a depth first traversal of the subtree rooted at node v.
@@ -267,6 +337,11 @@ class cst_sada_blind
         const_iterator end()const
         {
             return const_iterator(this, root(), true, false);
+        }
+
+        const_bin_iterator end_bin()const
+        {
+            return const_bin_iterator(&m_bin_proxy, m_bin_proxy.root(), true, false);
         }
 
         //! Returns a const_iterator to the element past the end of a depth first traversal of the subtree rooted at node v.
@@ -319,6 +394,8 @@ class cst_sada_blind
                 m_bp_rank10.set_vector(&m_bp);
                 m_bp_select10   = std::move(cst.m_bp_select10);
                 m_bp_select10.set_vector(&m_bp);
+                m_in_st         = std::move(cst.m_in_st);
+                m_bits_per_char = std::move(cst.m_bits_per_char);
             }
             return *this;
         }
@@ -337,6 +414,7 @@ class cst_sada_blind
             written_bytes += m_bp_support.serialize(out, child, "bp_support");
             written_bytes += m_bp_rank10.serialize(out, child, "bp_rank_10");
             written_bytes += m_bp_select10.serialize(out, child, "bp_select_10");
+            written_bytes += m_in_st.serialize(out, child, "in_st");
             structure_tree::add_size(child, written_bytes);
             return written_bytes;
         }
@@ -352,9 +430,11 @@ class cst_sada_blind
             m_bp_support.load(in, &m_bp);
             m_bp_rank10.load(in, &m_bp);
             m_bp_select10.load(in, &m_bp);
+            m_in_st.load(in);
+            m_bits_per_char = bits::hi(m_csa.sigma - 1) + 1;
         }
 
-        /*! \defgroup cst_sada_tree_methods Tree methods of cst_sada */
+        /*! \defgroup cst_sada_tree_methods Tree methods of cst_sada_bin */
         /* @{ */
 
 //! Return the root of the suffix tree.
@@ -369,7 +449,7 @@ class cst_sada_blind
 
 //! Decide if a node is a leaf in the suffix tree.
         /*!
-        * \param v A valid node of a cst_sada.
+        * \param v A valid node of a cst_sada_bin.
         * \returns A boolean value indicating if v is a leaf.
         * \par Time complexity
         *      \f$ \Order{1} \f$
@@ -382,20 +462,16 @@ class cst_sada_blind
         }
 
 
-    //! Decide if a node is a pseudo node in the suffix tree.
+//! Decide if a node in the binary tree is also a node in the suffix tree.
         /*!
         * \param v A valid node of a cst_sada_bin.
-        * \returns A boolean value indicating if v is a pseudo node.
+        * \returns A boolean value indicating if v is a nodein the suffix tree.
         * \par Time complexity
-        *      \f$ \Order{\lcpaccess \vee \saaccess} \f$
+        *      \f$ \Order{1} \f$
         */
-        bool is_pseudo(node_type v)const
+        bool is_suffix_node(node_type v)const
         {
-            if(v == root() || is_leaf(v)) {
-                return false;
-            }
-
-            return depth(pseudo_parent(v)) == depth(v);
+            return m_in_st[m_bp_support.rank(v) - 1];
         }
 
 //! Return the i-th leaf (1-based from left to right) of the suffix tree.
@@ -416,48 +492,44 @@ class cst_sada_blind
 
 //! Returns the depth of node v.
         /*!
-         * \param v A valid node of the binary tree.
+         * \param v A valid node in the binary tree.
          * \return The depth of the node.
          * \par Time complexity
          *    \f$ \Order{\lcpaccess \vee \saaccess} \f$
          */
         size_type depth(node_type v)const
         {
-            const size_type bits_per_char = bits::hi(m_csa.sigma - 1) + 1;
-
-            return pseudo_depth(v) / bits_per_char;
+            return depth_bin(v) / m_bits_per_char;
         }
 
-//! Returns the pseudo depth (depth in the binary representation) of node v.
+//! Returns the depth of node v in the binary tree.
         /*!
-         * \param v A valid node of the binary tree.
+         * \param v A valid node in the binary tree.
          * \return The pseudo depth of the node.
          * \par Time complexity
          *    \f$ \Order{\lcpaccess \vee \saaccess} \f$
          */
-        size_type pseudo_depth(node_type v)const
+        size_type depth_bin(node_type v)const
         {
-            const size_type bits_per_char = bits::hi(m_csa.sigma - 1) + 1;
-
             if (v == root())  // if v is the root
                 return 0;
 
-            if (is_leaf(v)) { // if v is a leave
+            if (is_leaf(v)) { // if v is a leaf
                 size_type i = m_bp_rank10(v); // get the index in the suffix array
-                return (m_csa.size() - m_csa[i]) * bits_per_char;
+                return (m_csa.size() - m_csa[i]) * m_bits_per_char;
             }
             assert(inorder(v)>0);
             return m_lcp[inorder(v)];
         }
 
-//! Returns the node depth of node v.
+//! Returns the node depth of node v in the binary tree.
         /*!
-         * \param v A valid node of a cst_sada.
-         * \return The node depth of node v.
+         * \param v A valid node in the binary tree.
+         * \return The node depth of node v in the binary tree.
          * \par Time complexity
          *   \f$ \Order{1} \f$
          */
-        size_type node_depth(node_type v)const
+        size_type node_depth_bin(node_type v)const
         {
             // -2 as the root() we assign depth=0 to the root
             return (m_bp_support.rank(v)<<1)-v-2;
@@ -531,13 +603,15 @@ class cst_sada_blind
         /*! \param v A valid node of the binary tree.
          *  \return The parent node of v or root() if v equals root().
          *  \par Time complexity
-         *       \f$ \Order{1} \f$
+         *       \f$ \Order{\log \sigma} \f$
          */
         node_type parent(node_type v)const
         {
             do {
-                v = pseudo_parent(v);
-            } while(is_pseudo(v));
+                v = parent_bin(v);
+            } while(!is_suffix_node(v));
+
+            return v;
         }
 
 //! Calculate the parent node of a node v in the binary tree.
@@ -546,7 +620,7 @@ class cst_sada_blind
          *  \par Time complexity
          *       \f$ \Order{1} \f$
          */
-        node_type pseudo_parent(node_type v)const
+        node_type parent_bin(node_type v)const
         {
             assert(m_bp[v]==1); // assert a valid node
             if (v == root())
@@ -567,15 +641,39 @@ class cst_sada_blind
             return cst_node_child_proxy<cst_sada_blind>(this,v);
         }
 
+//! Returns the next sibling of node v in the suffix tree.
+        /*!
+         * \param v A valid node v of the suffix tree.
+         * \return The next (right) sibling of node v or root() if v has no next (right) sibling.
+         * \par Time complexity
+         *    \f$ \Order{\log \sigma} \f$
+         */
+        node_type sibling(node_type v)const
+        {
+            if (v==root())
+                return root();
+            node_type res = v;
+            while(!m_bp[res-1]) {
+                res = m_bp_support.enclose(res);
+                if(is_suffix_node(res)) {
+                    return root();
+                }
+            }
+            res = m_bp_support.find_close(res)+1;
+            while (!is_suffix_node(res)) {
+                res++;
+            }
+            return res;
+        }
 
-//! Returns the next sibling of node v.
+//! Returns the next sibling of node v in the binary tree.
         /*!
          * \param v A valid node v of the suffix tree.
          * \return The next (right) sibling of node v or root() if v has no next (right) sibling.
          * \par Time complexity
          *    \f$ \Order{1} \f$
          */
-        node_type sibling(node_type v)const
+        node_type sibling_bin(node_type v)const
         {
             if (v==root())
                 return root();
@@ -587,62 +685,81 @@ class cst_sada_blind
         }
 
 //! Get the child w of node v which edge label (v,w) starts with character c.
-        /*
-         * \param v A valid tree node of the cst.
-         * \param c First character of the edge label from v to the desired child.
-         * \param char_pos Reference which will hold the position (0-based) of the matching char c in the sorted text/suffix array.
-         * \return The child node w which edge label (v,w) starts with c or root() if it does not exist.
-         * \par Time complexity
-         *   \f$ \Order( (\saaccess+\isaaccess) \cdot \sigma + \lcpaccess) \f$
-         * \par Note
-         *   With range median mimimum queries (RMMQ) one can code this operation in \f$\log \sigma \f$ time
-         */
-        node_type child(node_type v, const char_type c, size_type& char_pos)const
-        {
-            if (is_leaf(v))  // if v is a leaf = (), v has no child
-                return root();
-            // else v = ( (     ))
-            comp_char_type cc = m_csa.char2comp[c];
-            if (cc==0 and c!=0) // TODO: aendere char2comp so ab, dass man diesen sonderfall nicht braucht
-                return root();
-            size_type char_ex_max_pos = m_csa.C[cc+1], char_inc_min_pos = m_csa.C[cc];
-
-            size_type d = depth(v);  // time complexity: \lcpaccess
-            size_type res = v+1;
-            while (true) {
-                if (is_leaf(res)) {
-                    char_pos = get_char_pos(m_bp_rank10(res), d, m_csa);
-                } else {
-                    char_pos = get_char_pos(inorder(res), d, m_csa);
-                }
-                if (char_pos >= char_ex_max_pos)  // if the current char is lex. greater than the searched char: exit
-                    return root();
-                if (char_pos >= char_inc_min_pos)  // if the current char is lex. equal with the
-                    return res;
-                res = m_bp_support.find_close(res)+1;
-                if (!m_bp[res]) // closing parenthesis: there exists no next child
-                    return root();
-            }
-        }
-
-//! Get the child w of node v which edge label (v,w) starts with character c.
-// \sa child(node_type v, const char_type c, size_type &char_pos)
-        node_type child(node_type v, const char_type c) const
-        {
-            size_type char_pos;
-            return child(v, c, char_pos);
-        }
-
-//! Get the i-th child of a node v.
         /*!
          * \param v A valid tree node of the cst.
-         * \param i 1-based Index of the child which should be returned. \f$i \geq 1\f$.
-         * \return The i-th child node of v or root() if v has no i-th child.
+         * \param c First character of the edge label from v to the desired child.
+         * \return The child node w which edge label (v,w) starts with c or root() if it does not exist.
          * \par Time complexity
-         *   \f$ \Order{i} \f$ for \f$  i \leq \sigma \f$
+         *   \f$ \Order( \log \sigma + (\saaccess+\isaaccess) ) \f$
+         */
+        node_type child(node_type v, const char_type c) {
+            const auto cc = m_csa.char2comp[c];
+            if (cc==0 and c!= 0) { // TODO: aendere char2comp so ab, dass man diesen sonderfall nicht braucht
+                return root();
+            }
+
+            size_type d_bin = depth_bin(v);
+            size_type d = d_bin / m_bits_per_char;
+            do {
+                size_type bit_depth = d_bin % m_bits_per_char;
+                bool is_right_node = (cc & (1 << (m_bits_per_char - bit_depth - 1)));
+                if(is_right_node) {
+                    v = m_bp_support.find_close(v + 1) + 1;
+                } else {
+                    v++;
+                }
+            } while((d_bin = depth_bin(v)) / m_bits_per_char == d);
+
+            if(m_csa.text[m_csa[lb(v)] + d] != c) {
+                return root();
+            }
+
+            return v;
+        }
+
+//! Get the i-th child of a node v in the suffix tree.
+        /*!
+         * \param v A valid tree node of the suffix tree.
+         * \param i 1-based Index of the child which should be returned. \f$i \geq 1\f$.
+         * \return The i-th child node of v or root() if v has no i-th child in the suffix tree.
+         * \par Time complexity
+         *   \f$ \Order{i \log \sigma} \f$ for \f$  i \leq \sigma \f$
          *  \pre \f$ 1 \leq i \leq degree(v) \f$
          */
         node_type select_child(node_type v, size_type i)const
+        {
+            if (is_leaf(v))  // if v is a leave, v has no child
+                return root();
+            size_type res = v+1;
+            while (!is_suffix_node(res)) {
+                res++;
+            }
+            while (i > 1) {
+                while(!m_bp[res-1]) {
+                    res = m_bp_support.enclose(res);
+                    if(is_suffix_node(res)) {
+                        return root();
+                    }
+                }
+                res = m_bp_support.find_close(res)+1;
+                while (!is_suffix_node(res)) {
+                    res++;
+                }
+                --i;
+            }
+            return res;
+        }
+
+//! Get the i-th child of a node v in the binary tree.
+        /*!
+         * \param v A valid tree node of the binary tree.
+         * \param i 1-based Index of the child which should be returned. \f$i \geq 1\f$.
+         * \return The i-th child node of v or root() if v has no i-th child in the binary tree.
+         * \par Time complexity
+         *   \f$ \Order{i} \f$ for \f$  i \leq \sigma \f$
+         *  \pre \f$ 1 \leq i \leq 2 \f$
+         */
+        node_type select_child_bin(node_type v, size_type i)const
         {
             if (is_leaf(v))  // if v is a leave, v has no child
                 return root();
@@ -694,9 +811,26 @@ class cst_sada_blind
          * \param w The second node for which the lca with the first node should be computed.
          * \return A node that is the lowest common ancestor of v and w in the suffix tree.
          * \par Time complexity
-         *    \f$ \Order{\rrenclose}\   \f$
+         *    \f$ \Order{\rrenclose + \log \sigma}\   \f$
          */
         node_type lca(node_type v, node_type w)const
+        {
+            node_type u = lca_bin(v, w);
+            while(!is_suffix_node(u)) {
+                u = parent_bin(u);
+            }
+            return u;
+        }
+
+//! Calculate the lowest common ancestor (lca) of two nodes v and w of the binary tree.
+        /*!
+         * \param v The first node for which the lca with the second node should be computed.
+         * \param w The second node for which the lca with the first node should be computed.
+         * \return A node that is the lowest common ancestor of v and w in the binary tree.
+         * \par Time complexity
+         *    \f$ \Order{\rrenclose}\   \f$
+         */
+        node_type lca_bin(node_type v, node_type w)const
         {
             assert(m_bp[v] == 1 and m_bp[w] == 1);
             if (v > w) {
@@ -711,7 +845,7 @@ class cst_sada_blind
 
 //! Compute the suffix link of node v.
         /*!
-         * \param v A valid node of a cst_sada.
+         * \param v A valid node of a cst_sada_bin.
          * \return The suffix link of node v.
          * \par Time complexity
          *   \f$ \Order{ 1 } \f$
@@ -830,9 +964,9 @@ class cst_sada_blind
             }
         }
 
-//! Get the number of nodes of the suffix tree.
+//! Get the number of nodes of the binary tree.
         /*
-         *  \return The number of nodes of the suffix tree.
+         *  \return The number of nodes of the binary tree.
          *  \par Time complexity
          *    \f$ \Order{1} \f$
          */
@@ -851,22 +985,34 @@ class cst_sada_blind
             return lca(select_leaf(lb+1), select_leaf(rb+1));
         }
 
-//! Get the number of children of a node v.
+//! Get the number of children of a node v in the suffix tree.
         /*!
-         *  \param v A valid node v of a cst_sada.
-         *  \returns The number of children of node v.
+         *  \param v A valid node of the suffix tree.
+         *  \returns The number of children of node v in the suffix tree.
          *  \par Time complexity
          *       \f$ \Order{\sigma} \f$
          */
         size_type degree(node_type v)const
         {
             size_type res = 0;
-            v = v+1;
-            while (m_bp[v]) { // found open parentheses
+            v = select_child(v, 0);
+            while(v != root()) {
                 ++res;
-                v = m_bp_support.find_close(v)+1;
+                v = sibling(v);
             }
             return res;
+        }
+
+//! Get the number of children of a node v in the binary tree.
+        /*!
+         *  \param v A valid node in the binary tree.
+         *  \returns The number of children of node v in the binary tree.
+         *  \par Time complexity
+         *       \f$ \Order{1} \f$
+         */
+        size_type degree_bin(node_type v)const
+        {
+            return is_leaf(v) ? 0 : 2;
         }
 
 //! Maps an index i to the position in TLCP where LCP[i] can be found
