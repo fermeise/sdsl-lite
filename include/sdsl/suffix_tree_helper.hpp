@@ -177,7 +177,7 @@ construct_supercartesian_tree_bp_succinct(int_vector_buffer<t_width>& lcp_buf, c
     typedef bit_vector::size_type size_type;
     bit_vector bp(2*lcp_buf.size(), 0); // initialize result
     if (lcp_buf.size() > 0)	{
-        sorted_multi_stack_support vec_stack((1<<lcp_buf.width())-1);
+        sorted_multi_stack_support vec_stack(lcp_buf.size());
 
         size_type k=0;
         if (minimum) {
@@ -228,6 +228,7 @@ construct_supercartesian_tree_bp_succinct_and_first_child(int_vector_buffer<t_wi
 {
     typedef bit_vector::size_type size_type;
     size_type n = lcp_buf.size();
+    const size_type max_lcp = (1<<lcp_buf.width())-1;
     bp.resize(2*n);      // resize bit vector for balanced parentheses to 2 n bits
     bp_fc.resize(n);
     if (n == 0)	// if n == 0 we are done
@@ -235,7 +236,7 @@ construct_supercartesian_tree_bp_succinct_and_first_child(int_vector_buffer<t_wi
     size_type fc_cnt=0; // first child counter
     util::set_to_value(bp, 0);
     util::set_to_value(bp_fc, 0);
-    sorted_multi_stack_support vec_stack((1<<lcp_buf.width())-1);
+    sorted_multi_stack_support vec_stack(std::max(n, max_lcp));
 
     size_type k=0;
     size_type k_fc=0; // first child index
