@@ -370,20 +370,26 @@ TYPED_TEST(CstFullyBlackboxTest, ChildTest) {
     EXPECT_EQ(fcst.node( 6,  7), fcst.child(fcst.node( 0, 11), 'p'));
     EXPECT_EQ(fcst.node( 8, 11), fcst.child(fcst.node( 0, 11), 's'));
     EXPECT_EQ(fcst.node( 2,  2), fcst.child(fcst.node( 2,  5), '\0'));
+    EXPECT_EQ(fcst.root(),       fcst.child(fcst.node( 2,  5), 'M'));
+    EXPECT_EQ(fcst.root(),       fcst.child(fcst.node( 2,  5), 'i'));
     EXPECT_EQ(fcst.node( 3,  3), fcst.child(fcst.node( 2,  5), 'p'));
     EXPECT_EQ(fcst.node( 4,  5), fcst.child(fcst.node( 2,  5), 's'));
+    EXPECT_EQ(fcst.root(),       fcst.child(fcst.node( 6,  7), 'M'));
     EXPECT_EQ(fcst.node( 6,  6), fcst.child(fcst.node( 6,  7), 'i'));
     EXPECT_EQ(fcst.node( 7,  7), fcst.child(fcst.node( 6,  7), 'p'));
+    EXPECT_EQ(fcst.root(),       fcst.child(fcst.node( 6,  7), 's'));
+    EXPECT_EQ(fcst.root(),       fcst.child(fcst.node( 8, 11), 'M'));
     EXPECT_EQ(fcst.node( 8,  9), fcst.child(fcst.node( 8, 11), 'i'));
+    EXPECT_EQ(fcst.root(),       fcst.child(fcst.node( 8, 11), 'p'));
     EXPECT_EQ(fcst.node(10, 11), fcst.child(fcst.node( 8, 11), 's'));
+    EXPECT_EQ(fcst.root(),       fcst.child(fcst.node( 8,  9), 'M'));
+    EXPECT_EQ(fcst.root(),       fcst.child(fcst.node( 8,  9), 'i'));
     EXPECT_EQ(fcst.node( 8,  8), fcst.child(fcst.node( 8,  9), 'p'));
     EXPECT_EQ(fcst.node( 9,  9), fcst.child(fcst.node( 8,  9), 's'));
+    EXPECT_EQ(fcst.root(),       fcst.child(fcst.node(10, 11), 'M'));
+    EXPECT_EQ(fcst.root(),       fcst.child(fcst.node(10, 11), 'i'));
     EXPECT_EQ(fcst.node(10, 10), fcst.child(fcst.node(10, 11), 'p'));
     EXPECT_EQ(fcst.node(11, 11), fcst.child(fcst.node(10, 11), 's'));
-
-    EXPECT_EQ(fcst.root(),       fcst.child(fcst.node( 2,  5), 'i'));
-    EXPECT_EQ(fcst.root(),       fcst.child(fcst.node( 6,  7), 's'));
-    EXPECT_EQ(fcst.root(),       fcst.child(fcst.node( 8, 11), 'p'));
 
     EXPECT_EQ(fcst.root(),       fcst.child(fcst.node( 2,  5), 'a'));
     EXPECT_EQ(fcst.root(),       fcst.child(fcst.node( 6,  7), 'q'));
