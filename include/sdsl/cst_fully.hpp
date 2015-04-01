@@ -488,55 +488,53 @@ public:
          * \return The child node w which edge label (v,w) starts with c or root() if it does not exist.
          * \par Time complexity
          *       \f$ \Order{ \log m \cdot (\saaccess+\isaaccess) } \f$
-                 where \f$ m \f$ is the number of leaves under node v.
+                 where \f$ m \f$ is the number of leaves in the subtree rooted at node v.
          */
     node_type child_1(node_type v, char_type c, size_type d) const {
-        leaf_type res_lb;
-        leaf_type res_rb;
+        leaf_type lower;
+        leaf_type upper;
 
         {
-            leaf_type left = v.first;
-            leaf_type right = v.second;
+            leaf_type begin = v.first;
+            leaf_type end = v.second + 1;
 
-            while(left < right) {
-                leaf_type sample_pos = (left + right) / 2;
-                char_type sample = m_csa.text[m_csa[sample_pos] + d];
-                if(sample == c) {
-                    right = sample_pos;
-                } else if(sample < c) {
-                    left = sample_pos + 1;
+            while(begin < end) {
+                leaf_type sample_pos = (begin + end) / 2;
+                size_type char_pos = get_char_pos(sample_pos, d, m_csa);
+                char_type sample = m_csa.F[char_pos];
+                if(sample < c) {
+                    begin = sample_pos + 1;
                 } else {
-                    right = sample_pos - 1;
+                    end = sample_pos;
                 }
             }
 
-            if(m_csa.text[m_csa[left] + d] != c) {
-                return root();
-            }
-
-            res_lb = left;
+            lower = begin;
         }
 
         {
-            leaf_type left = v.first;
-            leaf_type right = v.second;
+            leaf_type begin = v.first;
+            leaf_type end = v.second + 1;
 
-            while(left < right) {
-                leaf_type sample_pos = (left + right + 1) / 2;
-                char_type sample = m_csa.text[m_csa[sample_pos] + d];
-                if(sample == c) {
-                    left = sample_pos;
-                } else if(sample < c) {
-                    left = sample_pos + 1;
+            while(begin < end) {
+                leaf_type sample_pos = (begin + end) / 2;
+                size_type char_pos = get_char_pos(sample_pos, d, m_csa);
+                char_type sample = m_csa.F[char_pos];
+                if(sample <= c) {
+                    begin = sample_pos + 1;
                 } else {
-                    right = sample_pos - 1;
+                    end = sample_pos;
                 }
             }
 
-            res_rb = left;
+            upper = begin;
         }
 
-        return node_type(res_lb, res_rb);
+        if(lower == upper) {
+            return root();
+        }
+
+        return node_type(lower, upper - 1);
     }
 
 //! Get the child w of node v which edge label (v,w) starts with character c.
@@ -734,13 +732,15 @@ public:
         }
         // TODO: Depth is unnecessarily calculated twice
         size_type d = depth(v);
-        char_type c = m_csa.text[m_csa[v.first] + d];
+        size_type char_pos = get_char_pos(v.first, d, m_csa);
+        char_type c = m_csa.F[char_pos];
         node_type res = child(v, c);
         while(i > 1) {
             if(res.second >= v.second) {
                 return root();
             }
-            c = m_csa.text[m_csa[res.second + 1] + d];
+            char_pos = get_char_pos(res.second + 1, d, m_csa);
+            c = m_csa.F[char_pos];
             res = child(v, c);
             i--;
         }
