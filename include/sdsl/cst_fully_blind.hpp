@@ -699,7 +699,7 @@ public:
          *   \f$ \Order{1} \f$
          */
     size_type sampled_nodes() const {
-        return m_s.size() / 2;
+        return m_bp_bin.size() / 2;
     }
 };
 
