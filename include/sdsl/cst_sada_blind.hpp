@@ -110,7 +110,7 @@ public:
  * @ingroup cst
  */
 template<class t_csa = csa_sada<>,
-         class t_lcp = lcp_support_sada<>,
+         class t_lcp = lcp_wt<>,
          class t_bp_support = bp_support_sada<>,
          class t_rank_10 = rank_support_v5<10,2>,
          class t_select_10 = select_support_mcl<10,2>
@@ -697,7 +697,7 @@ class cst_sada_blind
          * \par Time complexity
          *   \f$ \Order( \log \sigma + (\saaccess+\isaaccess) ) \f$
          */
-        node_type child(node_type v, const char_type c) {
+        node_type child(node_type v, const char_type c) const {
             const auto cc = m_csa.char2comp[c];
             if (cc==0 and c!= 0) { // TODO: aendere char2comp so ab, dass man diesen sonderfall nicht braucht
                 return root();
