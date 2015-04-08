@@ -439,7 +439,7 @@ class cst_sada_blind
             m_bits_per_char = bits::hi(m_csa.sigma - 1) + 1;
         }
 
-        /*! \defgroup cst_sada_tree_methods Tree methods of cst_sada_bin */
+        /*! \defgroup cst_sada_tree_methods Tree methods of cst_sada_blind */
         /* @{ */
 
 //! Return the root of the suffix tree.
@@ -454,7 +454,7 @@ class cst_sada_blind
 
 //! Decide if a node is a leaf in the suffix tree.
         /*!
-        * \param v A valid node of a cst_sada_bin.
+        * \param v A valid node of a cst_sada_blind.
         * \returns A boolean value indicating if v is a leaf.
         * \par Time complexity
         *      \f$ \Order{1} \f$
@@ -469,7 +469,7 @@ class cst_sada_blind
 
 //! Decide if a node in the binary tree is also a node in the suffix tree.
         /*!
-        * \param v A valid node of a cst_sada_bin.
+        * \param v A valid node of a cst_sada_blind.
         * \returns A boolean value indicating if v is a nodein the suffix tree.
         * \par Time complexity
         *      \f$ \Order{1} \f$
@@ -850,7 +850,7 @@ class cst_sada_blind
 
 //! Compute the suffix link of node v.
         /*!
-         * \param v A valid node of a cst_sada_bin.
+         * \param v A valid node of a cst_sada_blind.
          * \return The suffix link of node v.
          * \par Time complexity
          *   \f$ \Order{ 1 } \f$
@@ -869,6 +869,30 @@ class cst_sada_blind
             assert(left < right);
             node_type left_leaf = select_leaf(m_csa.psi[left]+1);
             node_type right_leaf= select_leaf(m_csa.psi[right]+1);
+            return lca(left_leaf, right_leaf);
+        }
+
+//! Compute the suffix link of node v applied a number of times consecutively.
+        /*!
+         * \param v A valid node of a cst_sada_blind.
+         * \return The suffix link ^ i of node v.
+         * \par Time complexity
+         *   \f$ \Order{ i } \f$
+         */
+        node_type sl_i(node_type v, size_type i)const
+        {
+            if (v == root())
+                return root();
+            // get leftmost leaf in the tree rooted at v
+            size_type left        = m_bp_rank10(v);
+            if (is_leaf(v)) {
+                return select_leaf(get_char_pos(left, i, m_csa)+1);
+            }
+            // get the rightmost leaf in the tree rooted at v
+            size_type right         = m_bp_rank10(m_bp_support.find_close(v))-1;
+            assert(left < right);
+            node_type left_leaf = select_leaf(get_char_pos(left, i, m_csa)+1);
+            node_type right_leaf= select_leaf(get_char_pos(right, i, m_csa)+1);
             return lca(left_leaf, right_leaf);
         }
 
