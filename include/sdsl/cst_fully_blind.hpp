@@ -801,34 +801,41 @@ cst_fully_blind<t_csa, t_delta, t_s_support, t_b, t_depth, t_sample_leaves>::cst
     {
         // TODO: Use bit_vector as stack
         auto event = memory_monitor::event("bin-tree");
-        std::stack<size_type> stack;
-        stack.push(0);
+        bit_vector stack;
+        stack.resize(cst.nodes_bin());
+        stack[0] = 0;
+        size_t stack_idx = 0;
+        bool node_has_two_children = false;
 
         for (auto it=cst.begin_bin(), end=cst.end_bin(); it!=end; ++it) {
             bool in_cst = cst.is_suffix_node(*it);
 
             if(cst.is_leaf(*it)) {
                 if(is_sampled[cst.id_bin(*it)]) {
-                    stack.top()++;
+                    node_has_two_children = stack[stack_idx];
+                    stack[stack_idx] = 1;
                 }
             } else {
                 if(1 == it.visit()) {
-                    stack.push(0);
+                    stack[++stack_idx] = 0;
                 }
                 if(2 == it.visit()) {
                     if(in_cst && is_sampled[cst.id_bin(*it)]) {
-                        stack.pop();
-                        stack.top()++;
-                    } else if(stack.top() == 2) {
+                        stack_idx--;
+                        node_has_two_children = stack[stack_idx];
+                        stack[stack_idx] = 1;
+                    } else if(node_has_two_children) {
                         is_sampled[cst.id_bin(*it)] = 1;
                         sample_count++;
-                        stack.pop();
-                        stack.top()++;
-                    } else if(stack.top() == 1) {
-                        stack.pop();
-                        stack.top()++;
+                        stack_idx--;
+                        node_has_two_children = stack[stack_idx];
+                        stack[stack_idx] = 1;
+                    } else if(stack[stack_idx] == 1) {
+                        stack_idx--;
+                        node_has_two_children = stack[stack_idx];
+                        stack[stack_idx] = 1;
                     } else {
-                        stack.pop();
+                        stack_idx--;
                     }
                 }
             }
