@@ -111,9 +111,8 @@ bool run_tests(const t_cst &cst, const t_cst_ref &cst_ref) {
     for(auto v_ref: nodes) {
         auto v = cst.node(cst_ref.lb(v_ref), cst_ref.rb(v_ref));
 
-        std::uniform_int_distribution<typename t_cst::size_type> distribution(cst_ref.lb(v_ref), cst_ref.rb(v_ref));
-        auto d = cst_ref.depth(v_ref);
-        auto c = cst_ref.csa.text[cst_ref.csa[distribution(get_generator())] + d];
+        std::uniform_int_distribution<typename t_cst::char_type> distribution(0, cst.csa.sigma - 1);
+        auto c = distribution(get_generator());
 
         auto u = cst.child(v, c);
         auto u_ref = cst_ref.child(v_ref, c);
