@@ -60,10 +60,14 @@ private:
     }
 
 public:
-    const size_type   &delta = m_delta;
-    const csa_type    &csa = m_csa;
-    const bit_vector  &s = m_s;
-    const b_type      &b = m_b;
+    const size_type       &delta = m_delta;
+    const csa_type        &csa = m_csa;
+    const bit_vector      &s = m_s;
+    const s_support_type  &s_support = m_s_support;
+    const b_type          &b = m_b;
+    const b_select_0_type &b_select_0 = m_b_select0;
+    const b_select_1_type &b_select_1 = m_b_select1;
+    const depth_type      &depth_sampling = m_depth;
 
 //! Default constructor
     cst_fully() {}
@@ -468,17 +472,7 @@ public:
 
         size_type d = depth(v);
 
-        // This assumes text_order_sampling
-        size_type child_1_time = (m_csa.sa_sample_dens + m_csa.isa_sample_dens) / 2 * bits::hi(v.second - v.first + 1);
-        size_type child_2_time = 3 * d + 1;
-
-        /*if(child_1_time <= child_2_time) {
-            return child_1(v, c, d);
-        } else {
-            return child_2(v, c, d);
-        }*/
-
-        return child_1(v, c, d);
+        return child(v, c, d);
     }
 
 //! Get the child w of node v which edge label (v,w) starts with character c.
@@ -490,7 +484,7 @@ public:
          *       \f$ \Order{ \log m \cdot (\saaccess+\isaaccess) } \f$
                  where \f$ m \f$ is the number of leaves in the subtree rooted at node v.
          */
-    node_type child_1(node_type v, char_type c, size_type d) const {
+    node_type child(node_type v, char_type c, size_type d) const {
         leaf_type lower;
         leaf_type upper;
 
@@ -535,40 +529,6 @@ public:
         }
 
         return node_type(lower, upper - 1);
-    }
-
-//! Get the child w of node v which edge label (v,w) starts with character c.
-        /*!
-         * \param v A node v.
-         * \param c First character of the edge label from v to the desired child.
-         * \return The child node w which edge label (v,w) starts with c or root() if it does not exist.
-         * \par Time complexity
-         *       \f$ \Order{ m \cdot (\psiaccess + t_{rank\_bwt}) } \f$,
-                 where \f$ m \f$ is the number of leaves under node v.
-         */
-    node_type child_2(node_type v, char_type c, size_type d) const {
-        std::vector<char_type> label(d, 0);
-
-        leaf_type l = v.first;
-
-        for(size_type i = 0; i < d; i++) {
-            label[i] = m_csa.F[l];
-            l = m_csa.psi[l];
-        }
-
-        l = 0;
-        leaf_type r = size() - 1;
-
-        backward_search(m_csa, l, r, c, l, r);
-        for(size_type k = 0; k < d; k++) {
-            backward_search(m_csa, l, r, label[d - k - 1], l, r);
-        }
-
-        if(l > r) {
-            return root();
-        } else {
-            return node_type(l, r);
-        }
     }
 
 //! Get the child w of node v which edge label (v,w) starts with character c.
@@ -730,18 +690,18 @@ public:
         if(is_leaf(v)) {
             return root();
         }
-        // TODO: Depth is unnecessarily calculated twice
+
         size_type d = depth(v);
         size_type char_pos = get_char_pos(v.first, d, m_csa);
         char_type c = m_csa.F[char_pos];
-        node_type res = child(v, c);
+        node_type res = child(v, c, d);
         while(i > 1) {
             if(res.second >= v.second) {
                 return root();
             }
             char_pos = get_char_pos(res.second + 1, d, m_csa);
             c = m_csa.F[char_pos];
-            res = child(v, c);
+            res = child(v, c, d);
             i--;
         }
 
@@ -755,17 +715,19 @@ public:
          */
     node_type sibling(node_type v) const {
         node_type p = parent(v);
-        size_type d = depth(p);
         if(v.second >= p.second) {
             return root();
         }
-        char_type c = m_csa.text[m_csa[v.second + 1] + d];
-        return child(p, c);
+        size_type d = depth(p);
+        size_type char_pos = get_char_pos(v.second + 1, d, m_csa);
+        char_type c = m_csa.F[char_pos];
+        return child(p, c, d);
     }
 
     char_type edge(node_type v, size_type d) const {
         assert(d >= 1 and d <= depth(v));
-        return m_csa.text[m_csa[v.first] + d - 1];
+        size_type char_pos = get_char_pos(v.first, d - 1, m_csa);
+        return m_csa.F[char_pos];
     }
 
 //! Get the number of nodes in the sampled tree.
@@ -781,15 +743,15 @@ public:
 
 template<class t_csa, uint32_t t_delta, class t_s_support, class t_b, class t_depth, bool t_sample_leaves>
 cst_fully<t_csa, t_delta, t_s_support, t_b, t_depth, t_sample_leaves>::cst_fully(cache_config &config) {
-    cst_sada<csa_type, lcp_wt<> > cst(config);
+    // 1. Construct CST
+    cst_sada<csa_type, lcp_dac<> > cst(config);
 
     if(t_delta > 0) {
         m_delta = t_delta;
     } else {
         const size_type n = cst.size();
-        if(n >= 3) {
-            m_delta = (bits::hi(n-1)+1) * (bits::hi(bits::hi(n-1))+1);
-        } else {
+        m_delta = (bits::hi(n-1)+1) * (bits::hi(bits::hi(n-1))+1);
+        if(m_delta < 2) {
             m_delta = 2;
         }
     }
@@ -800,6 +762,7 @@ cst_fully<t_csa, t_delta, t_s_support, t_b, t_depth, t_sample_leaves>::cst_fully
     is_sampled[cst.id(cst.root())] = true; // always sample root
     size_type sample_count = 1;
 
+    // 2a. Scan and mark leaves to be sampled
     if(t_sample_leaves) {
         auto event = memory_monitor::event("scan-leaves");
         for(auto it = csa_iterator<csa_type>::begin(cst.csa); it != csa_iterator<csa_type>::end(cst.csa); ++it) {
@@ -816,6 +779,7 @@ cst_fully<t_csa, t_delta, t_s_support, t_b, t_depth, t_sample_leaves>::cst_fully
         }
     }
 
+    // 2b. Scan an mark inner nodes to be sampled
     {
         auto event = memory_monitor::event("scan-nodes");
         for(auto it = cst.begin(); it != cst.end(); ++it) {
@@ -823,10 +787,7 @@ cst_fully<t_csa, t_delta, t_s_support, t_b, t_depth, t_sample_leaves>::cst_fully
                 const auto node = *it;
                 const size_type d = cst.depth(node);
                 if(d % delta_half == 0) {
-                    auto v = node;
-                    for(size_type i = 0; i < delta_half; i++) {
-                        v = cst.sl(v);
-                    }
+                    auto v = cst.sl_i(node, delta_half);
                     const size_type id = cst.id(v);
                     if(!is_sampled[id]) {
                         is_sampled[id] = true;
@@ -844,6 +805,7 @@ cst_fully<t_csa, t_delta, t_s_support, t_b, t_depth, t_sample_leaves>::cst_fully
     tmp_b.resize(2 * sample_count + cst.size());
     tmp_depth.resize(sample_count);
 
+    // 3. Create sampled tree data structures
     {
         auto event = memory_monitor::event("node-sampling");
 

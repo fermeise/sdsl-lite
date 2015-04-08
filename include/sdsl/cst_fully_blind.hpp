@@ -80,11 +80,21 @@ private:
     }
 
 public:
-    const size_type                &delta = m_delta;
-    const csa_type                 &csa = m_csa;
-    const bit_vector               &bp_bin = m_bp_bin;
-    const b_type                   &b = m_b;
-    const bit_vector               &s = m_s;
+    const size_type                 &delta = m_delta;
+    const csa_type                  &csa = m_csa;
+    const bit_vector                &bp_bin = m_bp_bin;
+    const bp_bin_support_type       &bp_bin_support = m_bp_bin_support;
+    const b_type                    &b = m_b;
+    const b_select_0_type           &b_select_0 = m_b_select0;
+    const b_select_1_type           &b_select_1 = m_b_select1;
+    const pd_type                   &pd = m_pd;
+    const bit_vector                &in_st = m_in_st;
+    const bit_vector                &in_s = m_in_s;
+    const bit_vector::rank_1_type   &in_s_rank1 = m_in_s_rank1;
+    const bit_vector::select_1_type &in_s_select1 = m_in_s_select1;
+    const bit_vector                &s = m_s;
+    const s_support_type            &s_support = m_s_support;
+    const depth_type                &depth_sampling = m_depth;
 
 //! Default constructor
     cst_fully_blind() {}
@@ -656,15 +666,17 @@ public:
         if(is_leaf(v)) {
             return root();
         }
-        // TODO: Depth is unnecessarily calculated twice
+
         size_type d = depth(v);
-        char_type c = m_csa.text[m_csa[v.first] + d];
+        size_type char_pos = get_char_pos(v.first, d, m_csa);
+        char_type c = m_csa.F[char_pos];
         node_type res = child(v, c);
         while(i > 1) {
             if(res.second >= v.second) {
                 return root();
             }
-            c = m_csa.text[m_csa[res.second + 1] + d];
+            char_pos = get_char_pos(res.second + 1, d, m_csa);
+            c = m_csa.F[char_pos];
             res = child(v, c);
             i--;
         }
@@ -679,17 +691,19 @@ public:
          */
     node_type sibling(node_type v) const {
         node_type p = parent(v);
-        size_type d = depth(p);
         if(v.second >= p.second) {
             return root();
         }
-        char_type c = m_csa.text[m_csa[v.second + 1] + d];
+        size_type d = depth(p);
+        size_type char_pos = get_char_pos(v.second + 1, d, m_csa);
+        char_type c = m_csa.F[char_pos];
         return child(p, c);
     }
 
     char_type edge(node_type v, size_type d) const {
         assert(d >= 1 and d <= depth(v));
-        return m_csa.text[m_csa[v.first] + d - 1];
+        size_type char_pos = get_char_pos(v.first, d - 1, m_csa);
+        return m_csa.F[char_pos];
     }
 
     //! Get the number of nodes in the sampled tree.
@@ -706,15 +720,14 @@ public:
 template<class t_csa, uint32_t t_delta, class t_s_support, class t_b, class t_depth, bool t_sample_leaves>
 cst_fully_blind<t_csa, t_delta, t_s_support, t_b, t_depth, t_sample_leaves>::cst_fully_blind(cache_config &config) {
     // 1. Construct blind CST
-    cst_sada_blind<t_csa, lcp_wt<> > cst(config);
+    cst_sada_blind<t_csa, lcp_dac<> > cst(config);
 
     if(t_delta > 0) {
         m_delta = t_delta;
     } else {
         const size_type n = cst.size();
-        if(n >= 3) {
-            m_delta = (bits::hi(n-1)+1) * (bits::hi(bits::hi(n-1))+1);
-        } else {
+        m_delta = (bits::hi(n-1)+1) * (bits::hi(bits::hi(n-1))+1);
+        if(m_delta < 2) {
             m_delta = 2;
         }
     }
@@ -759,10 +772,7 @@ cst_fully_blind<t_csa, t_delta, t_s_support, t_b, t_depth, t_sample_leaves>::cst
                 const auto node = *it;
                 const size_type d = cst.depth(node);
                 if(d % delta_half == 0) {
-                    auto v = node;
-                    for(size_type i = 0; i < delta_half; i++) {
-                        v = cst.sl(v);
-                    }
+                    auto v = cst.sl_i(node, delta_half);
                     const size_type id = cst.id_bin(v);
                     if(!is_sampled[id]) {
                         is_sampled[id] = true;
@@ -773,11 +783,11 @@ cst_fully_blind<t_csa, t_delta, t_s_support, t_b, t_depth, t_sample_leaves>::cst
                         sample_count_s++;
                     }
                     for(auto child = cst.select_child(node, 1); child != cst.root(); child = cst.sibling(child)) {
-                        auto c = cst.edge(child, cst.depth(node) + 1);
-                        auto child2 = cst.child(v, c);
-                        const size_type id2 = cst.id_bin(child2);
-                        if(!is_sampled[id2]) {
-                            is_sampled[id2] = true;
+                        auto c = cst.edge(child, d + 1);
+                        auto sampled_child = cst.child(v, c);
+                        const size_type sampled_child_id = cst.id_bin(sampled_child);
+                        if(!is_sampled[sampled_child_id]) {
+                            is_sampled[sampled_child_id] = true;
                             sample_count++;
                         }
                     }
@@ -787,34 +797,38 @@ cst_fully_blind<t_csa, t_delta, t_s_support, t_b, t_depth, t_sample_leaves>::cst
     }
 
     // 3. Choose sampled pseudo-nodes (so the sampled tree forms a binary tree)
-    std::stack<size_type> stack;
-    stack.push(0);
+    {
+        // TODO: Use bit_vector as stack
+        auto event = memory_monitor::event("bin-tree");
+        std::stack<size_type> stack;
+        stack.push(0);
 
-    for (auto it=cst.begin_bin(), end=cst.end_bin(); it!=end; ++it) {
-        bool in_cst = cst.is_suffix_node(*it);
+        for (auto it=cst.begin_bin(), end=cst.end_bin(); it!=end; ++it) {
+            bool in_cst = cst.is_suffix_node(*it);
 
-        if(cst.is_leaf(*it)) {
-            if(is_sampled[cst.id_bin(*it)]) {
-                stack.top()++;
-            }
-        } else {
-            if(1 == it.visit()) {
-                stack.push(0);
-            }
-            if(2 == it.visit()) {
-                if(in_cst && is_sampled[cst.id_bin(*it)]) {
-                    stack.pop();
+            if(cst.is_leaf(*it)) {
+                if(is_sampled[cst.id_bin(*it)]) {
                     stack.top()++;
-                } else if(stack.top() == 2) {
-                    is_sampled[cst.id_bin(*it)] = 1;
-                    sample_count++;
-                    stack.pop();
-                    stack.top()++;
-                } else if(stack.top() == 1) {
-                    stack.pop();
-                    stack.top()++;
-                } else {
-                    stack.pop();
+                }
+            } else {
+                if(1 == it.visit()) {
+                    stack.push(0);
+                }
+                if(2 == it.visit()) {
+                    if(in_cst && is_sampled[cst.id_bin(*it)]) {
+                        stack.pop();
+                        stack.top()++;
+                    } else if(stack.top() == 2) {
+                        is_sampled[cst.id_bin(*it)] = 1;
+                        sample_count++;
+                        stack.pop();
+                        stack.top()++;
+                    } else if(stack.top() == 1) {
+                        stack.pop();
+                        stack.top()++;
+                    } else {
+                        stack.pop();
+                    }
                 }
             }
         }
@@ -835,47 +849,50 @@ cst_fully_blind<t_csa, t_delta, t_s_support, t_b, t_depth, t_sample_leaves>::cst
     m_s.resize(2 * sample_count_s);
     tmp_depth.resize(sample_count_s);
 
-    size_type bp_bin_idx = 0;
-    size_type b_idx = 0;
-    size_type pd_idx = 0;
-    size_type in_st_idx = 0;
-    size_type in_s_idx = 0;
-    size_type s_idx = 0;
-    size_type depth_idx = 0;
+    {
+        auto event = memory_monitor::event("node-sampling");
+        size_type bp_bin_idx = 0;
+        size_type b_idx = 0;
+        size_type pd_idx = 0;
+        size_type in_st_idx = 0;
+        size_type in_s_idx = 0;
+        size_type s_idx = 0;
+        size_type depth_idx = 0;
 
-    for (auto it=cst.begin_bin(), end=cst.end_bin(); it!=end; ++it) {
-        bool in_cst = cst.is_suffix_node(*it);
+        for (auto it=cst.begin_bin(), end=cst.end_bin(); it!=end; ++it) {
+            bool in_cst = cst.is_suffix_node(*it);
 
-        if(it.visit() == 1 && is_sampled[cst.id_bin(*it)]) {
-            m_bp_bin[bp_bin_idx++] = 1;
-            tmp_b[b_idx++] = 1;
+            if(it.visit() == 1 && is_sampled[cst.id_bin(*it)]) {
+                m_bp_bin[bp_bin_idx++] = 1;
+                tmp_b[b_idx++] = 1;
+                if(cst.is_leaf(*it)) {
+                    m_pd[pd_idx++] = 0;
+                } else {
+                    size_type d = cst.depth_bin(*it);
+                    m_pd[pd_idx++] = d % width;
+                }
+                m_in_st[in_st_idx++] = (in_cst ? 1 : 0);
+                if(in_cst && is_sampled_s[cst.id_bin(*it)]) {
+                    m_in_s[in_s_idx++] = 1;
+                    m_s[s_idx++] = 1;
+                    size_type d = cst.depth(*it);
+                    tmp_depth[depth_idx++] = d / delta_half;
+                } else {
+                    m_in_s[in_s_idx++] = 0;
+                }
+            }
             if(cst.is_leaf(*it)) {
-                m_pd[pd_idx++] = 0;
-            } else {
-                size_type d = cst.depth_bin(*it);
-                m_pd[pd_idx++] = d % width;
+                tmp_b[b_idx++] = 0;
             }
-            m_in_st[in_st_idx++] = (in_cst ? 1 : 0);
-            if(in_cst && is_sampled_s[cst.id_bin(*it)]) {
-                m_in_s[in_s_idx++] = 1;
-                m_s[s_idx++] = 1;
-                size_type d = cst.depth(*it);
-                tmp_depth[depth_idx++] = d / delta_half;
-            } else {
-                m_in_s[in_s_idx++] = 0;
-            }
-        }
-        if(cst.is_leaf(*it)) {
-            tmp_b[b_idx++] = 0;
-        }
-        if((cst.is_leaf(*it) || it.visit() == 2) && is_sampled[cst.id_bin(*it)]) {
-            m_bp_bin[bp_bin_idx++] = 0;
-            tmp_b[b_idx++] = 1;
-            if(in_cst && is_sampled_s[cst.id_bin(*it)]) {
-                m_in_s[in_s_idx++] = 1;
-                m_s[s_idx++] = 0;
-            } else {
-                m_in_s[in_s_idx++] = 0;
+            if((cst.is_leaf(*it) || it.visit() == 2) && is_sampled[cst.id_bin(*it)]) {
+                m_bp_bin[bp_bin_idx++] = 0;
+                tmp_b[b_idx++] = 1;
+                if(in_cst && is_sampled_s[cst.id_bin(*it)]) {
+                    m_in_s[in_s_idx++] = 1;
+                    m_s[s_idx++] = 0;
+                } else {
+                    m_in_s[in_s_idx++] = 0;
+                }
             }
         }
     }
