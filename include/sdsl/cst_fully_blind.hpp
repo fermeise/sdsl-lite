@@ -640,7 +640,8 @@ public:
             l = lb(u_c);
             r = rb(u_c);
 
-            if(m_csa.text[m_csa[l] + depth(u)] != c) {
+            size_type char_pos = get_char_pos(l, depth(u), m_csa);
+            if(char_pos < m_csa.C[cc] || char_pos >= m_csa.C[cc + 1]) {
                 return root();
             }
         }
