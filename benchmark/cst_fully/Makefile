@@ -24,6 +24,7 @@ FCST_VERIFY_EXECS     = $(foreach IDX_ID,$(IDX_IDS),\
 						  $(foreach COMPILE_ID,$(COMPILE_IDS),bin/verify_fcst_$(IDX_ID).$(COMPILE_ID)))
 FCST_VERIFY_EXECS_INT = $(foreach IDX_ID,$(IDX_IDS_INT),\
 						  $(foreach COMPILE_ID,$(COMPILE_IDS),bin/verify_int_fcst_$(IDX_ID).$(COMPILE_ID)))
+NODE_DEPTH_EXECS      = bin/depth_stats bin/depth_stats_int
 INDEXES               = $(foreach TC_ID,$(TC_IDS),\
 						  $(foreach IDX_ID,$(IDX_IDS),indexes/$(TC_ID).$(IDX_ID).byte) indexes/$(TC_ID).CST.byte)
 INDEXES_INT           = $(foreach TC_ID,$(TC_IDS_INT),\
@@ -44,6 +45,8 @@ VERIFICATION          = $(foreach TC_ID,$(TC_IDS),\
 VERIFICATION_INT      = $(foreach TC_ID,$(TC_IDS_INT),\
 						  $(foreach IDX_ID,$(IDX_IDS_INT),\
 							$(foreach COMPILE_ID,$(COMPILE_IDS),verification/$(TC_ID).$(IDX_ID).$(COMPILE_ID).int)))
+NODE_STATS            = $(foreach TC_ID,$(TC_IDS),stats/$(TC_ID).byte.depth.txt)
+NODE_STATS_INT        = $(foreach TC_ID,$(TC_IDS_INT),stats/$(TC_ID).int.depth.txt)
 
 RES_FILE = results/all.txt
 
@@ -63,9 +66,11 @@ verify: input\
 		indexes\
 		$(VERIFICATION) $(VERIFICATION_INT)
 
+depth: input $(NODE_DEPTH_EXECS) $(NODE_STATS) $(NODE_STATS_INT)
+
 input: $(TC_PATHS) $(TC_PATHS_INT)
 
-execs: $(BUILD_EXECS) $(BUILD_EXECS_INT) $(FCST_EXECS) $(FCST_EXECS_INT) $(FCST_VERIFY_EXECS) $(FCST_VERIFY_EXECS_INT)
+execs: $(BUILD_EXECS) $(BUILD_EXECS_INT) $(FCST_EXECS) $(FCST_EXECS_INT) $(FCST_VERIFY_EXECS) $(FCST_VERIFY_EXECS_INT) $(NODE_DEPTH_EXECS)
 
 indexes: $(INDEXES) $(INDEXES_INT)
 
@@ -133,6 +138,18 @@ bin/verify_int_fcst_%: $(SRC_DIR)/verify_fcst.cpp
 	$(eval COMPILE_OPTIONS:=$(call config_select,compile_options.config,$(COMPILE_ID),2))
 	$(MY_CXX) $(MY_CXX_FLAGS) $(COMPILE_OPTIONS) -DFCST_TYPE="$(IDX_TYPE)" -DCST_TYPE="$(IDX_REF_TYPE)" -L$(LIB_DIR) -I$(INC_DIR) -o $@ $< $(LIBS)
 
+bin/depth_stats: $(SRC_DIR)/depth_stats.cpp
+	$(eval IDX_TYPE:=$(REF_CST_TYPE))
+	$(eval COMPILE_ID:=$(DEFAULT_COMPILE_ID))
+	$(eval COMPILE_OPTIONS:=$(call config_select,compile_options.config,$(COMPILE_ID),2))
+	$(MY_CXX) $(MY_CXX_FLAGS) $(COMPILE_OPTIONS) -DCST_TYPE="$(IDX_TYPE)" -L$(LIB_DIR) -I$(INC_DIR) -o $@ $< $(LIBS)
+
+bin/depth_stats_int: $(SRC_DIR)/depth_stats.cpp
+	$(eval IDX_TYPE:=$(REF_CST_TYPE_INT))
+	$(eval COMPILE_ID:=$(DEFAULT_COMPILE_ID))
+	$(eval COMPILE_OPTIONS:=$(call config_select,compile_options.config,$(COMPILE_ID),2))
+	$(MY_CXX) $(MY_CXX_FLAGS) $(COMPILE_OPTIONS) -DCST_TYPE="$(IDX_TYPE)" -L$(LIB_DIR) -I$(INC_DIR) -o $@ $< $(LIBS)
+
 # indexes/[TC_ID].[IDX_ID].byte
 indexes/%.byte:
 	$(eval TC_ID:=$(call dim,1,$*))
@@ -194,6 +211,20 @@ verification/%.int:
 	@echo "# IDX_ID = $(IDX_ID)"
 	@echo "# COMPILE_ID = $(COMPILE_ID)"
 	@bin/verify_int_fcst_$(IDX_ID).$(COMPILE_ID) indexes/$(TC_ID).$(IDX_ID).int indexes/$(TC_ID).CST.int
+
+# stats/[TC_ID].byte.depth.txt
+stats/%.byte.depth.txt:
+	$(eval TC_ID:=$*)
+	$(eval TC_PATH:=$(call config_select,test_case.config,$(TC_ID),2))
+	@echo "Generating node depth statistics for $(TC_ID) (byte alphabet)"
+	@bin/depth_stats $(TC_PATH) $(TMP_DIR) >> $@
+
+# stats/[TC_ID].int.depth.txt
+stats/%.int.depth.txt:
+	$(eval TC_ID:=$*)
+	$(eval TC_PATH:=$(call config_select,test_case_int.config,$(TC_ID),2))
+	@echo "Generating node depth statistics for $(TC_ID) (int alphabet)"
+	@bin/depth_stats_int $(TC_PATH) $(TMP_DIR) >> $@
 
 ../data/%:
 	$(eval URL:=$(call config_filter,test_case.config,$@,4))
