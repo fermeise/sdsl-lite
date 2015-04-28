@@ -772,8 +772,13 @@ cst_fully_blind<t_csa, t_delta, t_s_support, t_b, t_depth, t_sample_leaves>::cst
             if(it.visit() == 1 and cst.is_leaf(*it) == false and *it != cst.root()) {
                 const auto node = *it;
                 const size_type d = cst.depth(node);
+                std::vector<char_type> label(delta_half, 0);
                 if(d % delta_half == 0) {
-                    auto v = cst.sl_i(node, delta_half);
+                    auto v = node;
+                    for(size_type i = 0; i < delta_half; i++) {
+                        label[i] = cst.csa.F[cst.lb(v)];
+                        v = cst.sl(v);
+                    }
                     const size_type id = cst.id_bin(v);
                     if(!is_sampled[id]) {
                         is_sampled[id] = true;
@@ -783,13 +788,15 @@ cst_fully_blind<t_csa, t_delta, t_s_support, t_b, t_depth, t_sample_leaves>::cst
                         is_sampled_s[id] = true;
                         sample_count_s++;
                     }
-                    for(auto child = cst.select_child(node, 1); child != cst.root(); child = cst.sibling(child)) {
-                        auto c = cst.edge(child, d + 1);
-                        auto sampled_child = cst.child(v, c);
-                        const size_type sampled_child_id = cst.id_bin(sampled_child);
-                        if(!is_sampled[sampled_child_id]) {
-                            is_sampled[sampled_child_id] = true;
-                            sample_count++;
+                    for(auto child = cst.select_child(v, 1); child != cst.root(); child = cst.sibling(child)) {
+                        const size_type child_id = cst.id_bin(child);
+                        if(!is_sampled[child_id]) {
+                            auto l = cst.lb(child);
+                            auto r = cst.rb(child);
+                            if(backward_search(cst.csa, l, r, label.begin(), label.end(), l, r) > 0) {
+                                is_sampled[child_id] = true;
+                                sample_count++;
+                            }
                         }
                     }
                 }

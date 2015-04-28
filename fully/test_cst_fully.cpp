@@ -4,6 +4,30 @@
 
 using namespace sdsl;
 
+const char road_not_taken[] = "TWO roads diverged in a yellow wood,\
+And sorry I could not travel both\
+And be one traveler, long I stood\
+And looked down one as far as I could\
+To where it bent in the undergrowth;\
+\
+Then took the other, as just as fair,\
+And having perhaps the better claim,\
+Because it was grassy and wanted wear;\
+Though as for that the passing there\
+Had worn them really about the same,\
+\
+And both that morning equally lay\
+In leaves no step had trodden black.\
+Oh, I kept the first for another day!\
+Yet knowing how way leads on to way,\
+I doubted if I should ever come back.\
+\
+I shall be telling this with a sigh\
+Somewhere ages and ages hence:\
+Two roads diverged in a wood, and I—\
+I took the one less traveled by.\
+And that has made all the difference.";
+
 TEST(CstFullyWhiteboxTest, LsaLeafTest) {
     cst_fully<csa_wt<>, 4, bp_support_sada<>, sd_vector<>, dac_vector<>, true> fcst;
 
@@ -198,6 +222,37 @@ TEST(CstFullyWhiteboxTest, LCSATest4) {
     EXPECT_EQ(0, fcst.lcsa(0, 1));
     EXPECT_EQ(0, fcst.lcsa(1, 0));
     EXPECT_EQ(1, fcst.lcsa(1, 1));
+}
+
+TEST(CstFullySdsWhiteboxTest, LevelTest) {
+    EXPECT_EQ(1, cst_fully_sds<>::level(0));
+    EXPECT_EQ(1, cst_fully_sds<>::level(1));
+    EXPECT_EQ(2, cst_fully_sds<>::level(2));
+    EXPECT_EQ(2, cst_fully_sds<>::level(3));
+    EXPECT_EQ(3, cst_fully_sds<>::level(4));
+    EXPECT_EQ(3, cst_fully_sds<>::level(5));
+    EXPECT_EQ(3, cst_fully_sds<>::level(6));
+    EXPECT_EQ(3, cst_fully_sds<>::level(7));
+    EXPECT_EQ(4, cst_fully_sds<>::level(8));
+}
+
+TEST(CstFullyBlindWhiteboxTest, SampledTreeTest) {
+    cst_fully_blind<csa_wt<>, 4> cst;
+
+    construct_im(cst, road_not_taken, 1);
+
+    std::stringstream ss;
+    ss << cst.bp_bin;
+    EXPECT_EQ("1111111111110100011011101000001101000111101110100000110100001111010011"
+              "0100011010000110111101000000111010011010000111011010001101000011111111"
+              "1010001101000111010011101000001001111010001111110111101001101000111010"
+              "0100001110100100011010001101000000111111111101001001001110100110100001"
+              "1101001000111101001101000110100001110100111010000011101000011111110100"
+              "1001101000110100001111101001001111101000100100000001111010011110100011"
+              "1101001110100110100000001110111101001000011111010011101001101000011010"
+              "0010000001111101111010011101001111010001101000000011111101111011010001"
+              "1110100010001101000001101000011111101001001101000111101001111101001000"
+              "10001101000000011101111010011010000011011110100000001000", ss.str());
 }
 
 template<typename t_cst>
@@ -479,30 +534,6 @@ TYPED_TEST(CstFullyBlackboxTest, EdgeTest) {
     EXPECT_EQ('i', fcst.edge(fcst.node( 1,  1), 11));
     EXPECT_EQ('\0',fcst.edge(fcst.node( 1,  1), 12));
 }
-
-const char road_not_taken[] = "TWO roads diverged in a yellow wood,\
-And sorry I could not travel both\
-And be one traveler, long I stood\
-And looked down one as far as I could\
-To where it bent in the undergrowth;\
-\
-Then took the other, as just as fair,\
-And having perhaps the better claim,\
-Because it was grassy and wanted wear;\
-Though as for that the passing there\
-Had worn them really about the same,\
-\
-And both that morning equally lay\
-In leaves no step had trodden black.\
-Oh, I kept the first for another day!\
-Yet knowing how way leads on to way,\
-I doubted if I should ever come back.\
-\
-I shall be telling this with a sigh\
-Somewhere ages and ages hence:\
-Two roads diverged in a wood, and I—\
-I took the one less traveled by.\
-And that has made all the difference.";
 
 TYPED_TEST(CstFullyBlackboxTest, IteratorTest) {
     typedef TypeParam cst_type;
