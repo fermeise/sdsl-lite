@@ -765,7 +765,7 @@ cst_fully_blind<t_csa, t_delta, t_s_support, t_b, t_depth, t_sample_leaves>::cst
         }
     }
 
-    // 2b. Scan an mark inner nodes to be sampled
+    // 2b. Scan and mark inner nodes to be sampled
     {
         auto event = memory_monitor::event("scan-nodes");
         for(auto it = cst.begin(); it != cst.end(); ++it) {
@@ -806,7 +806,6 @@ cst_fully_blind<t_csa, t_delta, t_s_support, t_b, t_depth, t_sample_leaves>::cst
 
     // 3. Choose sampled pseudo-nodes (so the sampled tree forms a binary tree)
     {
-        // TODO: Use bit_vector as stack
         auto event = memory_monitor::event("bin-tree");
         bit_vector stack;
         stack.resize(cst.nodes_bin());
@@ -815,8 +814,6 @@ cst_fully_blind<t_csa, t_delta, t_s_support, t_b, t_depth, t_sample_leaves>::cst
         bool node_has_two_children = false;
 
         for (auto it=cst.begin_bin(), end=cst.end_bin(); it!=end; ++it) {
-            bool in_cst = cst.is_suffix_node(*it);
-
             if(cst.is_leaf(*it)) {
                 if(is_sampled[cst.id_bin(*it)]) {
                     node_has_two_children = stack[stack_idx];
@@ -827,7 +824,7 @@ cst_fully_blind<t_csa, t_delta, t_s_support, t_b, t_depth, t_sample_leaves>::cst
                     stack[++stack_idx] = 0;
                 }
                 if(2 == it.visit()) {
-                    if(in_cst && is_sampled[cst.id_bin(*it)]) {
+                    if(is_sampled[cst.id_bin(*it)]) {
                         stack_idx--;
                         node_has_two_children = stack[stack_idx];
                         stack[stack_idx] = 1;
