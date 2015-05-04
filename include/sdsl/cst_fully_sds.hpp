@@ -288,15 +288,15 @@ public:
                          b_right - u_end - 1);
     }
 
-//! Returns the LCSA (lowest common sampled ancestor) for two sampled nodes.
+//! Returns the LCA of two nodes in the sampled tree.
         /*!
          * \param u The sampled node u.
          * \param q The sampled node q.
-         * \return The LCSA of u and q.
+         * \return The lowest common ancestor of u and q in the sampled tree.
          * \par Time complexity
          *   \f$ \Order{\rrenclose} \f$
          */
-    sampled_node_type lcsa(sampled_node_type u, sampled_node_type q) const {
+    sampled_node_type sampled_lca(sampled_node_type u, sampled_node_type q) const {
         assert(m_s[u] == 1 and m_s[q] == 1);
         if(u > q) {
             std::swap(u, q);
@@ -341,7 +341,7 @@ public:
             }
             d += m_delta / 2;
 
-            u = lcsa(lsa_leaf(l), lsa_leaf(r));
+            u = sampled_lca(lsa_leaf(l), lsa_leaf(r));
 
             size_type idx = m_s_support.rank(u) - 1;
             if(m_depth_mask[idx]) {
@@ -426,7 +426,7 @@ public:
         std::vector<char_type> c(m_delta, 0);
 
         for(size_type i = 0; i < m_delta; i++) {
-            w[i] = lcsa(lsa_leaf(l), lsa_leaf(r));
+            w[i] = sampled_lca(lsa_leaf(l), lsa_leaf(r));
 
             c[i] = m_csa.F[l];
             char_type comp = csa.char2comp[c[i]];

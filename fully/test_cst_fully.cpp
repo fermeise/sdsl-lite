@@ -170,58 +170,58 @@ TEST(CstFullyWhiteboxTest, SampledDepthTest3) {
     EXPECT_EQ(2, fcst.depth(1));
 }
 
-TEST(CstFullyWhiteboxTest, LCSATest) {
+TEST(CstFullyWhiteboxTest, SampledLCATest) {
     cst_fully<csa_wt<>, 4, bp_support_sada<>, sd_vector<>, dac_vector<>, true> fcst;
 
     construct_im(fcst, "abbbab", 1);
 
-    EXPECT_EQ(0, fcst.lcsa(0, 0));
-    EXPECT_EQ(1, fcst.lcsa(1, 1));
-    EXPECT_EQ(3, fcst.lcsa(3, 3));
-    EXPECT_EQ(0, fcst.lcsa(0, 1));
-    EXPECT_EQ(0, fcst.lcsa(0, 3));
-    EXPECT_EQ(0, fcst.lcsa(1, 3));
+    EXPECT_EQ(0, fcst.sampled_lca(0, 0));
+    EXPECT_EQ(1, fcst.sampled_lca(1, 1));
+    EXPECT_EQ(3, fcst.sampled_lca(3, 3));
+    EXPECT_EQ(0, fcst.sampled_lca(0, 1));
+    EXPECT_EQ(0, fcst.sampled_lca(0, 3));
+    EXPECT_EQ(0, fcst.sampled_lca(1, 3));
 }
 
-TEST(CstFullyWhiteboxTest, LCSATest2) {
+TEST(CstFullyWhiteboxTest, SampledLCATest2) {
     cst_fully<csa_wt<>, 4, bp_support_sada<>, sd_vector<>, dac_vector<>, true> fcst;
 
     construct_im(fcst, "Mississippi", 1);
 
-    EXPECT_EQ(0, fcst.lcsa(0, 0));
-    EXPECT_EQ(1, fcst.lcsa(1, 1));
-    EXPECT_EQ(3, fcst.lcsa(3, 3));
-    EXPECT_EQ(5, fcst.lcsa(5, 5));
-    EXPECT_EQ(7, fcst.lcsa(7, 7));
-    EXPECT_EQ(8, fcst.lcsa(8, 8));
-    EXPECT_EQ(0, fcst.lcsa(0, 3));
-    EXPECT_EQ(0, fcst.lcsa(0, 7));
-    EXPECT_EQ(0, fcst.lcsa(0, 8));
-    EXPECT_EQ(0, fcst.lcsa(5, 7));
-    EXPECT_EQ(0, fcst.lcsa(5, 8));
-    EXPECT_EQ(7, fcst.lcsa(7, 8));
-    EXPECT_EQ(7, fcst.lcsa(8, 7));
+    EXPECT_EQ(0, fcst.sampled_lca(0, 0));
+    EXPECT_EQ(1, fcst.sampled_lca(1, 1));
+    EXPECT_EQ(3, fcst.sampled_lca(3, 3));
+    EXPECT_EQ(5, fcst.sampled_lca(5, 5));
+    EXPECT_EQ(7, fcst.sampled_lca(7, 7));
+    EXPECT_EQ(8, fcst.sampled_lca(8, 8));
+    EXPECT_EQ(0, fcst.sampled_lca(0, 3));
+    EXPECT_EQ(0, fcst.sampled_lca(0, 7));
+    EXPECT_EQ(0, fcst.sampled_lca(0, 8));
+    EXPECT_EQ(0, fcst.sampled_lca(5, 7));
+    EXPECT_EQ(0, fcst.sampled_lca(5, 8));
+    EXPECT_EQ(7, fcst.sampled_lca(7, 8));
+    EXPECT_EQ(7, fcst.sampled_lca(8, 7));
 }
 
-TEST(CstFullyWhiteboxTest, LCSATest3) {
+TEST(CstFullyWhiteboxTest, SampledLCATest3) {
     cst_fully<csa_wt<>, 4, bp_support_sada<>, sd_vector<>, dac_vector<>, true> fcst;
 
     construct_im(fcst, " as far as I c as j as fai", 1);
 
     // sampled tree should look like (01(2)(3)4567(8)(9)(10)11(12)131415(16)(17)((18)19)(20)2122((23)((24)25)26))
-    EXPECT_EQ(fcst.lcsa(fcst.lsa_leaf(23), fcst.lsa_leaf(24)),
-              fcst.lcsa(fcst.lcsa(fcst.lsa_leaf(23), fcst.lsa_leaf(24)), fcst.lsa_leaf(24)));
+    EXPECT_EQ(fcst.sampled_lca(fcst.lsa_leaf(23), fcst.lsa_leaf(24)),
+              fcst.sampled_lca(fcst.sampled_lca(fcst.lsa_leaf(23), fcst.lsa_leaf(24)), fcst.lsa_leaf(24)));
 }
 
-TEST(CstFullyWhiteboxTest, LCSATest4) {
+TEST(CstFullyWhiteboxTest, SampledLCATest4) {
     cst_fully<csa_wt<>, 4, bp_support_sada<>, sd_vector<>, dac_vector<>, false> fcst;
 
     construct_im(fcst, "Mississippi", 1);
 
-    EXPECT_EQ(0, fcst.lcsa(0, 0));
-    EXPECT_EQ(0, fcst.lcsa(0, 1));
-    EXPECT_EQ(0, fcst.lcsa(1, 0));
-    EXPECT_EQ(1, fcst.lcsa(1, 1));
+    EXPECT_EQ(0, fcst.sampled_lca(0, 0));
+    EXPECT_EQ(0, fcst.sampled_lca(0, 1));
+    EXPECT_EQ(0, fcst.sampled_lca(1, 0));
+    EXPECT_EQ(1, fcst.sampled_lca(1, 1));
 }
 
 TEST(CstFullySdsWhiteboxTest, LevelTest) {
