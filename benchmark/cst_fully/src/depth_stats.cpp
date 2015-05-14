@@ -22,46 +22,24 @@ int main(int argc, char **argv) {
     cache_config config(true, tmp_dir);
     construct(cst, input_file, config, fast_cst_type::alphabet_category::WIDTH == 8 ? 1 : 0);
 
-    size_t max_depth = 0;
-    size_t total_depth = 0;
-    size_t node_count = 0;
-
-    std::vector<size_t> depth_cnt(128, 0);
-    std::vector<size_t> depth_cnt_exp(64, 0);
-    std::vector<size_t> depth_cnt_exp_sample(64, 0);
+    std::vector<size_t> depth_cnt(100 * 1024 * 1024 + 1, 0);
 
     for(auto it = cst.begin(); it != cst.end(); ++it) {
         if(it.visit() == 1 && !cst.is_leaf(*it)) {
             const size_t depth = cst.depth(*it);
-            if(depth < 128) {
-                depth_cnt[depth]++;
-            }
-            if(depth > 0) {
-                depth_cnt_exp[bits::hi(depth)]++;
-            }
-            if(depth == (1u << bits::hi(depth))) {
-                depth_cnt_exp_sample[bits::hi(depth)]++;
-            }
-            if(depth > max_depth) {
-                max_depth = depth;
-            }
-            total_depth += depth;
-            node_count++;
+            depth_cnt[depth]++;
         }
     }
 
-    std::cout << "Number of nodes = " << node_count << std::endl;
-    for(size_t i = 0; i < 128; i++) {
-        std::cout << "Number of nodes with depth " << i << " = " << depth_cnt[i] << std::endl;
+    int last_i = -1;
+    size_t sum = 0;
+    for(int i = 0; i < 1000000; i++) {
+        sum += depth_cnt[i];
+        if((i - last_i) > i / 100) {
+            std::cout << i << " " << sum << std::endl;
+            last_i = i;
+        }
     }
-    for(size_t i = 0; i < 64 && depth_cnt_exp[i] > 0; i++) {
-        std::cout << "Number of nodes with depth between " << (1 << i) << " and " << (1 << (i + 1))-1 << " = " << depth_cnt_exp[i] << std::endl;
-    }
-    for(size_t i = 0; i < 64 && depth_cnt_exp_sample[i] > 0; i++) {
-        std::cout << "Number of nodes with depth " << (1 << i) << " = " << depth_cnt_exp_sample[i] << std::endl;
-    }
-    std::cout << "Maximum depth = " << max_depth << std::endl;
-    std::cout << "Average depth = " << total_depth / node_count << std::endl;
 
     return 0;
 }
