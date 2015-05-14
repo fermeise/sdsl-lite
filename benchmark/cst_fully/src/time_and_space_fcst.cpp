@@ -189,8 +189,13 @@ void test_depth(const t_cst &cst, const typename t_cst::node_type &v) {
 }
 
 template<class t_cst>
-typename t_cst::node_type parent_argument(const t_cst&, const typename t_cst::node_type v) {
-    return v;
+typename t_cst::node_type parent_argument(const t_cst& cst, const typename t_cst::node_type v) {
+    std::uniform_int_distribution<typename t_cst::size_type> distribution(cst.lb(v), cst.rb(v));
+
+    auto d = cst.depth(v);
+    auto c = cst.csa.text[cst.csa[distribution(get_generator())] + d];
+
+    return cst.child(v, c);
 }
 
 template<class t_cst>
