@@ -289,6 +289,11 @@ public:
     }
 
     sampled_node_type bin_to_s(bin_node_type w) const {
+        /* pseudocode:
+        if(m_in_s[w]) // w exists in S
+             return m_in_s_rank1.rank(w);
+         else  // w does not exist in S
+             return m_in_s_rank1.rank(w) - 1; // return previous paren*/
         return m_in_s_rank1.rank(w) + m_in_s[w] - 1;
     }
 
@@ -330,12 +335,7 @@ public:
          */
     node_type sampled_node(sampled_node_type u) const {
         assert(m_s[u] == 1);
-        size_type u_end = m_s_support.find_close(u);
-        size_type b_left = m_b_select1.select(s_to_bin(u) + 1);
-        size_type b_right = m_b_select1.select(s_to_bin(u_end) + 1);
-
-        return node_type(b_left - s_to_bin(u),
-                         b_right - s_to_bin(u_end) - 1);
+        return bin_node(s_to_bin(u));
     }
 
     node_type bin_node(bin_node_type w) const {
