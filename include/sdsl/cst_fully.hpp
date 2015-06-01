@@ -262,6 +262,26 @@ public:
         return v.second;
     }
 
+//! Calculates the leftmost leaf in the subtree rooted at node v.
+        /*! \param v A valid node of the suffix tree.
+         *  \return The leftmost leaf in the subtree rooted at node v.
+         *  \par Time complexity
+         *    \f$ \Order{1} \f$
+         */
+    node_type leftmost_leaf(const node_type v) const {
+        return node_type(v.first, v.first);
+    }
+
+//! Calculates the rightmost leaf in the subtree rooted at node v.
+        /*!\param v A valid node of the suffix tree.
+         * \return The rightmost leaf in the subtree rooted at node v.
+         * \par Time complexity
+         *   \f$ \Order{1} \f$
+         */
+    node_type rightmost_leaf(const node_type v) const {
+        return node_type(v.second, v.second);
+    }
+
 //! Returns true iff v is an ancestor of w.
     bool ancestor(node_type v, node_type w) const {
         return v.first <= w.first && v.second >= w.second;
@@ -478,6 +498,32 @@ public:
         }
 
         return lca(m_csa.psi[v.first], m_csa.psi[v.second]);
+    }
+
+//! Compute the Weiner link of node v and character c.
+        /*
+         * \param v A valid not of a cst_fully.
+         * \param c The character which should be prepended to the string of the current node.
+         *   \return root() if the Weiner link of (v, c) does not exist, otherwise the Weiner link is returned.
+         * \par Time complexity
+         *    \f$ \Order{ t_{rank\_bwt} + t_{lca}}\f$
+         */
+    node_type wl(node_type v, const char_type c) const {
+        size_type l, r;
+        std::tie(l, r) = v;
+        backward_search(m_csa, l, r, c, l, r);
+        return node_type(l, r);
+    }
+
+//! Compute the suffix number of a leaf node v.
+        /*!\param v A valid leaf node of a cst_sada.
+         * \return The suffix array value corresponding to the leaf node v.
+         * \par Time complexity
+         *   \f$ \Order{ \saaccess } \f$
+         */
+    size_type sn(node_type v) const {
+        assert(is_leaf(v));
+        return m_csa[v.first];
     }
 
 //! Calculate the parent node of a node v.
@@ -732,5 +778,11 @@ cst_fully<t_csa, t_delta, t_s_support, t_b, t_depth, t_sample_leaves>::cst_fully
 }
 
 }// end namespace sdsl
+
+template<class T>
+std::ostream& operator<<(std::ostream& os, const std::pair<T, T>& v) {
+    os << "[" << v.first << ", " << v.second << "]";
+    return os;
+}
 
 #endif // INCLUDED_SDSL_CST_FULLY
