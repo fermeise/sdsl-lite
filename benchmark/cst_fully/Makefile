@@ -2,8 +2,6 @@ include ../Make.helper
 LIBS=-lsdsl -ldivsufsort -ldivsufsort64
 SRC_DIR=src
 TMP_DIR=../tmp
-REF_CST_TYPE=cst_sada<csa_wt<wt_huff<rrr_vector<63> >, 32, 32, text_order_sa_sampling<>, text_order_isa_sampling_support<> > >
-REF_CST_TYPE_INT=cst_sada<csa_wt_int<wt_int<rrr_vector<63> >, 32, 32, text_order_sa_sampling<>, text_order_isa_sampling_support<> > >
 
 TC_IDS:=$(call config_ids,test_case.config)
 TC_IDS_INT:=$(call config_ids,test_case_int.config)
@@ -14,37 +12,25 @@ IDX_IDS_INT:=$(call config_ids,index_int.config)
 COMPILE_IDS:=$(call config_ids,compile_options.config)
 DEFAULT_COMPILE_ID:=$(word 1, $(COMPILE_IDS))
 
-BUILD_EXECS           = $(foreach IDX_ID,$(IDX_IDS),bin/build_fcst_$(IDX_ID)) bin/build_fcst_CST
-BUILD_EXECS_INT       = $(foreach IDX_ID,$(IDX_IDS_INT),bin/build_int_fcst_$(IDX_ID)) bin/build_int_fcst_CST
-FCST_EXECS            = $(foreach IDX_ID,$(IDX_IDS),\
-						  $(foreach COMPILE_ID,$(COMPILE_IDS),bin/time_and_space_fcst_$(IDX_ID).$(COMPILE_ID)))
-FCST_EXECS_INT        = $(foreach IDX_ID,$(IDX_IDS_INT),\
-						  $(foreach COMPILE_ID,$(COMPILE_IDS),bin/time_and_space_int_fcst_$(IDX_ID).$(COMPILE_ID)))
-FCST_VERIFY_EXECS     = $(foreach IDX_ID,$(IDX_IDS),\
-						  $(foreach COMPILE_ID,$(COMPILE_IDS),bin/verify_fcst_$(IDX_ID).$(COMPILE_ID)))
-FCST_VERIFY_EXECS_INT = $(foreach IDX_ID,$(IDX_IDS_INT),\
-						  $(foreach COMPILE_ID,$(COMPILE_IDS),bin/verify_int_fcst_$(IDX_ID).$(COMPILE_ID)))
+BUILD_EXECS           = $(foreach IDX_ID,$(IDX_IDS),bin/build_cst_$(IDX_ID))
+BUILD_EXECS_INT       = $(foreach IDX_ID,$(IDX_IDS_INT),bin/build_int_cst_$(IDX_ID))
+CST_EXECS            = $(foreach IDX_ID,$(IDX_IDS),\
+						  $(foreach COMPILE_ID,$(COMPILE_IDS),bin/time_and_space_cst_$(IDX_ID).$(COMPILE_ID)))
+CST_EXECS_INT        = $(foreach IDX_ID,$(IDX_IDS_INT),\
+						  $(foreach COMPILE_ID,$(COMPILE_IDS),bin/time_and_space_int_cst_$(IDX_ID).$(COMPILE_ID)))
 NODE_DEPTH_EXECS      = bin/depth_stats bin/depth_stats_int
 INDEXES               = $(foreach TC_ID,$(TC_IDS),\
-						  $(foreach IDX_ID,$(IDX_IDS),indexes/$(TC_ID).$(IDX_ID).byte) indexes/$(TC_ID).CST.byte)
+						  $(foreach IDX_ID,$(IDX_IDS),indexes/$(TC_ID).$(IDX_ID).byte))
 INDEXES_INT           = $(foreach TC_ID,$(TC_IDS_INT),\
-						  $(foreach IDX_ID,$(IDX_IDS_INT),indexes/$(TC_ID).$(IDX_ID).int) indexes/$(TC_ID).CST.int)
-INDEXES_REF           = $(foreach TC_ID,$(TC_IDS),indexes/$(TC_ID).CST.byte)
-INDEXES_REF_INT       = $(foreach TC_ID,$(TC_IDS),indexes_ref/$(TC_ID).CST.int)
-INDEX_FILES           = $(foreach IDX,$(INDEXES),$(IDX)) $(foreach IDX,$(INDEXES_REF),$(IDX))
-INDEX_FILES_INT       = $(foreach IDX,$(INDEXES_INT),$(IDX)) $(foreach IDX,$(INDEXES_REF_INT),$(IDX))
+						  $(foreach IDX_ID,$(IDX_IDS_INT),indexes/$(TC_ID).$(IDX_ID).int))
+INDEX_FILES           = $(foreach IDX,$(INDEXES),$(IDX))
+INDEX_FILES_INT       = $(foreach IDX,$(INDEXES_INT),$(IDX))
 RES_FILES             = $(foreach TC_ID,$(TC_IDS),\
 						  $(foreach IDX_ID,$(IDX_IDS),\
 							$(foreach COMPILE_ID,$(COMPILE_IDS),results/$(TC_ID).$(IDX_ID).$(COMPILE_ID).byte)))
 RES_FILES_INT         = $(foreach TC_ID,$(TC_IDS_INT),\
 						  $(foreach IDX_ID,$(IDX_IDS_INT),\
 							$(foreach COMPILE_ID,$(COMPILE_IDS),results/$(TC_ID).$(IDX_ID).$(COMPILE_ID).int)))
-VERIFICATION          = $(foreach TC_ID,$(TC_IDS),\
-						  $(foreach IDX_ID,$(IDX_IDS),\
-							$(foreach COMPILE_ID,$(COMPILE_IDS),verification/$(TC_ID).$(IDX_ID).$(COMPILE_ID).byte)))
-VERIFICATION_INT      = $(foreach TC_ID,$(TC_IDS_INT),\
-						  $(foreach IDX_ID,$(IDX_IDS_INT),\
-							$(foreach COMPILE_ID,$(COMPILE_IDS),verification/$(TC_ID).$(IDX_ID).$(COMPILE_ID).int)))
 NODE_STATS            = $(foreach TC_ID,$(TC_IDS),stats/$(TC_ID).byte.depth.txt)
 NODE_STATS_INT        = $(foreach TC_ID,$(TC_IDS_INT),stats/$(TC_ID).int.depth.txt)
 
@@ -54,89 +40,53 @@ all: execs
 
 timing: input\
 		$(BUILD_EXECS) $(BUILD_EXECS_INT)\
-		$(FCST_EXECS) $(FCST_EXECS_INT)\
+		$(CST_EXECS) $(CST_EXECS_INT)\
 		indexes\
 		$(RES_FILES) $(RES_FILES_INT)
 	cat $(RES_FILES) $(RES_FILES_INT) > $(RES_FILE)
 	@cd visualize; make
 
-verify: input\
-		$(BUILD_EXECS) $(BUILD_EXECS_INT)\
-		$(FCST_VERIFY_EXECS) $(FCST_VERIFY_EXECS_INT)\
-		indexes\
-		$(VERIFICATION) $(VERIFICATION_INT)
-
 depth: input $(NODE_DEPTH_EXECS) $(NODE_STATS) $(NODE_STATS_INT)
 
 input: $(TC_PATHS) $(TC_PATHS_INT)
 
-execs: $(BUILD_EXECS) $(BUILD_EXECS_INT) $(FCST_EXECS) $(FCST_EXECS_INT) $(FCST_VERIFY_EXECS) $(FCST_VERIFY_EXECS_INT) $(NODE_DEPTH_EXECS)
+execs: $(BUILD_EXECS) $(BUILD_EXECS_INT) $(CST_EXECS) $(CST_EXECS_INT) $(NODE_DEPTH_EXECS)
 
 indexes: $(INDEXES) $(INDEXES_INT)
 
-# bin/build_fcst_[IDX_ID]
-bin/build_fcst_%: $(SRC_DIR)/build_fcst.cpp
+# bin/build_cst_[IDX_ID]
+bin/build_cst_%: $(SRC_DIR)/build_cst.cpp
 	$(eval IDX_ID:=$(call dim,1,$*))
 	$(eval IDX_TYPE:=$(call config_select,index.config,$(IDX_ID),2))
 	$(eval COMPILE_ID:=$(DEFAULT_COMPILE_ID))
 	$(eval COMPILE_OPTIONS:=$(call config_select,compile_options.config,$(COMPILE_ID),2))
 	$(MY_CXX) $(MY_CXX_FLAGS) $(COMPILE_OPTIONS) -DCST_TYPE="$(IDX_TYPE)" -L$(LIB_DIR) -I$(INC_DIR) -o $@ $< $(LIBS)
 
-bin/build_fcst_CST: $(SRC_DIR)/build_fcst.cpp
-	$(eval IDX_TYPE:=$(REF_CST_TYPE))
-	$(eval COMPILE_ID:=$(DEFAULT_COMPILE_ID))
-	$(eval COMPILE_OPTIONS:=$(call config_select,compile_options.config,$(COMPILE_ID),2))
-	$(MY_CXX) $(MY_CXX_FLAGS) $(COMPILE_OPTIONS) -DCST_TYPE="$(IDX_TYPE)" -L$(LIB_DIR) -I$(INC_DIR) -o $@ $< $(LIBS)
-
-# bin/build_int_fcst_[IDX_ID]
-bin/build_int_fcst_%: $(SRC_DIR)/build_fcst.cpp
+# bin/build_int_cst_[IDX_ID]
+bin/build_int_cst_%: $(SRC_DIR)/build_cst.cpp
 	$(eval IDX_ID:=$(call dim,1,$*))
 	$(eval IDX_TYPE:=$(call config_select,index_int.config,$(IDX_ID),2))
 	$(eval COMPILE_ID:=$(DEFAULT_COMPILE_ID))
 	$(eval COMPILE_OPTIONS:=$(call config_select,compile_options.config,$(COMPILE_ID),2))
 	$(MY_CXX) $(MY_CXX_FLAGS) $(COMPILE_OPTIONS) -DCST_TYPE="$(IDX_TYPE)" -L$(LIB_DIR) -I$(INC_DIR) -o $@ $< $(LIBS)
 
-bin/build_int_fcst_CST: $(SRC_DIR)/build_fcst.cpp
-	$(eval IDX_TYPE:=$(REF_CST_TYPE_INT))
-	$(eval COMPILE_ID:=$(DEFAULT_COMPILE_ID))
-	$(eval COMPILE_OPTIONS:=$(call config_select,compile_options.config,$(COMPILE_ID),2))
-	$(MY_CXX) $(MY_CXX_FLAGS) $(COMPILE_OPTIONS) -DCST_TYPE="$(IDX_TYPE)" -L$(LIB_DIR) -I$(INC_DIR) -o $@ $< $(LIBS)
-
-# bin/time_and_space_fcst_[INDEX_ID].[COMPILE_ID]
-bin/time_and_space_fcst_%: $(SRC_DIR)/time_and_space_fcst.cpp
+# bin/time_and_space_cst_[INDEX_ID].[COMPILE_ID]
+bin/time_and_space_cst_%: $(SRC_DIR)/time_and_space_cst.cpp
 	$(eval IDX_ID:=$(call dim,1,$*))
 	$(eval IDX_TYPE:=$(call config_select,index.config,$(IDX_ID),2))
 	$(eval IDX_REF_TYPE:=$(REF_CST_TYPE))
 	$(eval COMPILE_ID:=$(call dim,2,$*))
 	$(eval COMPILE_OPTIONS:=$(call config_select,compile_options.config,$(COMPILE_ID),2))
-	$(MY_CXX) $(MY_CXX_FLAGS) $(COMPILE_OPTIONS) -DFCST_TYPE="$(IDX_TYPE)" -DCST_TYPE="$(IDX_REF_TYPE)" -L$(LIB_DIR) -I$(INC_DIR) -o $@ $< $(LIBS)
+	$(MY_CXX) $(MY_CXX_FLAGS) $(COMPILE_OPTIONS) -DCST_TYPE="$(IDX_TYPE)" -L$(LIB_DIR) -I$(INC_DIR) -o $@ $< $(LIBS)
 
-# bin/time_and_space_int_fcst_[INDEX_ID].[COMPILE_ID]
-bin/time_and_space_int_fcst_%: $(SRC_DIR)/time_and_space_fcst.cpp
+# bin/time_and_space_int_cst_[INDEX_ID].[COMPILE_ID]
+bin/time_and_space_int_cst_%: $(SRC_DIR)/time_and_space_cst.cpp
 	$(eval IDX_ID:=$(call dim,1,$*))
 	$(eval IDX_TYPE:=$(call config_select,index_int.config,$(IDX_ID),2))
 	$(eval IDX_REF_TYPE:=$(REF_CST_TYPE_INT))
 	$(eval COMPILE_ID:=$(call dim,2,$*))
 	$(eval COMPILE_OPTIONS:=$(call config_select,compile_options.config,$(COMPILE_ID),2))
-	$(MY_CXX) $(MY_CXX_FLAGS) $(COMPILE_OPTIONS) -DFCST_TYPE="$(IDX_TYPE)" -DCST_TYPE="$(IDX_REF_TYPE)" -L$(LIB_DIR) -I$(INC_DIR) -o $@ $< $(LIBS)
-
-# bin/verify_fcst_[INDEX_ID].[COMPILE_ID]
-bin/verify_fcst_%: $(SRC_DIR)/verify_fcst.cpp
-	$(eval IDX_ID:=$(call dim,1,$*))
-	$(eval IDX_TYPE:=$(call config_select,index.config,$(IDX_ID),2))
-	$(eval IDX_REF_TYPE:=$(REF_CST_TYPE))
-	$(eval COMPILE_ID:=$(call dim,2,$*))
-	$(eval COMPILE_OPTIONS:=$(call config_select,compile_options.config,$(COMPILE_ID),2))
-	$(MY_CXX) $(MY_CXX_FLAGS) $(COMPILE_OPTIONS) -DFCST_TYPE="$(IDX_TYPE)" -DCST_TYPE="$(IDX_REF_TYPE)" -L$(LIB_DIR) -I$(INC_DIR) -o $@ $< $(LIBS)
-
-# bin/verify_int_fcst_[INDEX_ID].[COMPILE_ID]
-bin/verify_int_fcst_%: $(SRC_DIR)/verify_fcst.cpp
-	$(eval IDX_ID:=$(call dim,1,$*))
-	$(eval IDX_TYPE:=$(call config_select,index_int.config,$(IDX_ID),2))
-	$(eval IDX_REF_TYPE:=$(REF_CST_TYPE_INT))
-	$(eval COMPILE_ID:=$(call dim,2,$*))
-	$(eval COMPILE_OPTIONS:=$(call config_select,compile_options.config,$(COMPILE_ID),2))
-	$(MY_CXX) $(MY_CXX_FLAGS) $(COMPILE_OPTIONS) -DFCST_TYPE="$(IDX_TYPE)" -DCST_TYPE="$(IDX_REF_TYPE)" -L$(LIB_DIR) -I$(INC_DIR) -o $@ $< $(LIBS)
+	$(MY_CXX) $(MY_CXX_FLAGS) $(COMPILE_OPTIONS) -DCST_TYPE="$(IDX_TYPE)" -L$(LIB_DIR) -I$(INC_DIR) -o $@ $< $(LIBS)
 
 bin/depth_stats: $(SRC_DIR)/depth_stats.cpp
 	$(eval IDX_TYPE:=$(REF_CST_TYPE))
@@ -158,7 +108,7 @@ indexes/%.byte:
 	$(eval TIME_FILE:=stats/$(TC_ID).$(IDX_ID).construction.html)
 	$(eval STATS_FILE:=stats/$(TC_ID).$(IDX_ID).structure.html)
 	@echo "Building index $(IDX_ID) on $(TC_ID) (byte alphabet)"
-	@bin/build_fcst_$(IDX_ID) $(TC_PATH) $(TMP_DIR) $@ $(TIME_FILE) $(STATS_FILE)
+	@bin/build_cst_$(IDX_ID) $(TC_PATH) $(TMP_DIR) $@ $(TIME_FILE) $(STATS_FILE)
 
 # indexes/[TC_ID].[IDX_ID].int
 indexes/%.int:
@@ -168,49 +118,29 @@ indexes/%.int:
 	$(eval TIME_FILE:=stats/$(TC_ID).$(IDX_ID).construction.html)
 	$(eval STATS_FILE:=stats/$(TC_ID).$(IDX_ID).structure.html)
 	@echo "Building index $(IDX_ID) on $(TC_ID) (int alphabet)"
-	@bin/build_int_fcst_$(IDX_ID) $(TC_PATH) $(TMP_DIR) $@ $(TIME_FILE) $(STATS_FILE)
+	@bin/build_int_cst_$(IDX_ID) $(TC_PATH) $(TMP_DIR) $@ $(TIME_FILE) $(STATS_FILE)
 
 # Format: results/[TC_ID].[INDEX_ID].[COMPILE_ID].byte
 results/%.byte:
 	$(eval TC_ID:=$(call dim,1,$*))
 	$(eval IDX_ID:=$(call dim,2,$*))
 	$(eval COMPILE_ID:=$(call dim,3,$*))
-	@echo "Running bin/time_and_space_fcst_$(IDX_ID).$(COMPILE_ID) on $(TC_ID)"
+	@echo "Running bin/time_and_space_cst_$(IDX_ID).$(COMPILE_ID) on $(TC_ID)"
 	@echo "# TC_ID = $(TC_ID)" >> $@
 	@echo "# IDX_ID = $(IDX_ID)" >> $@
 	@echo "# COMPILE_ID = $(COMPILE_ID)" >> $@
-	@bin/time_and_space_fcst_$(IDX_ID).$(COMPILE_ID) indexes/$(TC_ID).$(IDX_ID).byte indexes/$(TC_ID).CST.byte >> $@
+	@bin/time_and_space_cst_$(IDX_ID).$(COMPILE_ID) indexes/$(TC_ID).$(IDX_ID).byte >> $@
 
 # Format: results/[TC_ID].[INDEX_ID].[COMPILE_ID].int
 results/%.int:
 	$(eval TC_ID:=$(call dim,1,$*))
 	$(eval IDX_ID:=$(call dim,2,$*))
 	$(eval COMPILE_ID:=$(call dim,3,$*))
-	@echo "Running bin/time_and_space_fcst_$(IDX_ID).$(COMPILE_ID) on $(TC_ID)"
+	@echo "Running bin/time_and_space_cst_$(IDX_ID).$(COMPILE_ID) on $(TC_ID)"
 	@echo "# TC_ID = $(TC_ID)" >> $@
 	@echo "# IDX_ID = $(IDX_ID)" >> $@
 	@echo "# COMPILE_ID = $(COMPILE_ID)" >> $@
-	@bin/time_and_space_int_fcst_$(IDX_ID).$(COMPILE_ID) indexes/$(TC_ID).$(IDX_ID).int indexes/$(TC_ID).CST.int >> $@
-
-verification/%.byte:
-	$(eval TC_ID:=$(call dim,1,$*))
-	$(eval IDX_ID:=$(call dim,2,$*))
-	$(eval COMPILE_ID:=$(call dim,3,$*))
-	@echo "Running bin/verify_fcst_$(IDX_ID).$(COMPILE_ID) on $(TC_ID)"
-	@echo "# TC_ID = $(TC_ID)"
-	@echo "# IDX_ID = $(IDX_ID)"
-	@echo "# COMPILE_ID = $(COMPILE_ID)"
-	@bin/verify_fcst_$(IDX_ID).$(COMPILE_ID) indexes/$(TC_ID).$(IDX_ID).byte indexes/$(TC_ID).CST.byte
-
-verification/%.int:
-	$(eval TC_ID:=$(call dim,1,$*))
-	$(eval IDX_ID:=$(call dim,2,$*))
-	$(eval COMPILE_ID:=$(call dim,3,$*))
-	@echo "Running bin/verify_int_fcst_$(IDX_ID).$(COMPILE_ID) on $(TC_ID)"
-	@echo "# TC_ID = $(TC_ID)"
-	@echo "# IDX_ID = $(IDX_ID)"
-	@echo "# COMPILE_ID = $(COMPILE_ID)"
-	@bin/verify_int_fcst_$(IDX_ID).$(COMPILE_ID) indexes/$(TC_ID).$(IDX_ID).int indexes/$(TC_ID).CST.int
+	@bin/time_and_space_int_cst_$(IDX_ID).$(COMPILE_ID) indexes/$(TC_ID).$(IDX_ID).int >> $@
 
 # stats/[TC_ID].byte.depth.txt
 stats/%.byte.depth.txt:

@@ -6,11 +6,10 @@ using namespace sdsl;
 using namespace std::chrono;
 using timer = std::chrono::high_resolution_clock;
 
-typedef FCST_TYPE fcst_type;
 typedef CST_TYPE cst_type;
 
 const size_t NUM_REPETITIONS = 10000;
-const size_t BURST_SIZE = 100;
+const size_t BURST_SIZE = 10000;
 
 std::default_random_engine &get_generator() {
     static std::default_random_engine generator(std::chrono::system_clock::now().time_since_epoch().count());
@@ -189,8 +188,13 @@ void test_depth(const t_cst &cst, const typename t_cst::node_type &v) {
 }
 
 template<class t_cst>
-typename t_cst::node_type parent_argument(const t_cst&, const typename t_cst::node_type v) {
-    return v;
+typename t_cst::node_type parent_argument(const t_cst& cst, const typename t_cst::node_type v) {
+    std::uniform_int_distribution<typename t_cst::size_type> distribution(cst.lb(v), cst.rb(v));
+
+    auto d = cst.depth(v);
+    auto c = cst.csa.text[cst.csa[distribution(get_generator())] + d];
+
+    return cst.child(v, c);
 }
 
 template<class t_cst>
@@ -204,8 +208,6 @@ template<class t_cst,
 void run_benchmark(const std::string &cst_name, const t_cst &cst,
                    const std::string &op_name, t_test_func test_func, t_prepare_func prepare_func) {
     run_benchmark(cst_name, cst, op_name, test_func, prepare_func, "U", node_sampler_uniform<t_cst>(cst));
-    run_benchmark(cst_name, cst, op_name, test_func, prepare_func, "SU", node_sampler_iterate_sl<t_cst>(cst));
-    run_benchmark(cst_name, cst, op_name, test_func, prepare_func, "PU", node_sampler_iterate_parent<t_cst>(cst));
 }
 
 template<class t_cst,
@@ -246,65 +248,37 @@ void run_benchmark(std::string cst_name, const t_cst &cst) {
     run_benchmark(cst_name, cst, "PARENT", test_parent<t_cst>, parent_argument<t_cst>);
 }
 
-struct stats_t {
-    size_t max_depth;
-    size_t avg_depth;
-};
-
 template<class t_cst>
-stats_t get_stats(t_cst cst) {
-    stats_t result;
+void output_stats(const t_cst& cst) {
+    std::cout << "# TREE_SIZE = " << cst.nodes() << std::endl;
+    std::cout << "# SAMPLING_FACTOR = " << std::endl;
+}
 
-    size_t max_depth = 0;
-    size_t total_depth = 0;
-    size_t node_count = 0;
-
-    for(auto it = cst.begin(); it != cst.end(); ++it) {
-        if(it.visit() == 1 && !cst.is_leaf(*it)) {
-            size_t depth = cst.depth(*it);
-            if(depth > max_depth) {
-                max_depth = depth;
-            }
-            total_depth += depth;
-            node_count++;
-        }
-    }
-
-    result.max_depth = max_depth;
-    result.avg_depth = total_depth / node_count;
-
-    return result;
+template<class t_csa, uint32_t t_delta, class t_s_support, class t_b, class t_depth, bool t_sample_leaves>
+void output_stats(const cst_fully<t_csa, t_delta, t_s_support, t_b, t_depth, t_sample_leaves>& cst) {
+    std::cout << "# TREE_SIZE = " << cst.sampled_nodes() << std::endl;
+    std::cout << "# SAMPLING_FACTOR = " << cst.delta << std::endl;
 }
 
 int main(int argc, char** argv) {
-    if(argc < 3) {
-        std::cout << "Usage: " << argv[0] << " fcst_file cst_file" << std::endl;
+    if(argc < 2) {
+        std::cout << "Usage: " << argv[0] << " cst_file" << std::endl;
         return 1;
     }
 
-    const char* fcst_file = argv[1];
-    const char* cst_file = argv[2];
+    const char* cst_file = argv[1];
 
-    fcst_type fcst;
     cst_type cst;
-
-    load_from_file(fcst, fcst_file);
     load_from_file(cst, cst_file);
 
-    std::cout << "# ALPHABET_SIZE = " << fcst.csa.sigma << std::endl;
-    std::cout << "# DATA_SIZE = " << fcst.csa.text.size() << std::endl;
-    std::cout << "# TREE_SIZE = " << cst.nodes() << std::endl;
-    //stats_t stats = get_stats(cst);
-    //std::cout << "# MAX_DEPTH = " << stats.max_depth << std::endl;
-    //std::cout << "# AVG_DEPTH = " << stats.avg_depth << std::endl;
+    std::cout << "# ALPHABET_SIZE = " << cst.csa.sigma << std::endl;
+    std::cout << "# DATA_SIZE = " << cst.csa.text.size() << std::endl;
+    output_stats(cst);
 
-    std::cout << "# FCST_SIZE = " << size_in_bytes(fcst) << std::endl;
     std::cout << "# CST_SIZE = " << size_in_bytes(cst) << std::endl;
-    std::cout << "# CSA_SIZE = " << size_in_bytes(fcst.csa) << std::endl;
+    std::cout << "# CSA_SIZE = " << size_in_bytes(cst.csa) << std::endl;
 
-    run_benchmark("FCST", fcst);
     run_benchmark("CST", cst);
 
     return 0;
 }
-
