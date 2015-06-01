@@ -37,6 +37,8 @@ struct bcst_tag {};// binary CST tag
 struct psi_tag {}; // tag for CSAs based on the psi function
 struct lf_tag {}; // tag for CSAs based on the LF function
 
+struct csa_member_tag {}; // tag for text, bwt, LF, \Psi members of CSA 
+
 struct lcp_plain_tag {};
 struct lcp_permuted_tag {};
 struct lcp_tree_compressed_tag {};

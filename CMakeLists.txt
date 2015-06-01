@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.7)
+cmake_minimum_required(VERSION 2.8.11)
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules")
 include(AppendCompilerFlags)
 
@@ -61,6 +61,8 @@ if( BUILTIN_POPCNT )
     endif()
 endif()
 
+#COMMENT REPLACED BY BIICODE
+
 add_subdirectory(external)
 add_subdirectory(include)
 add_subdirectory(lib)
@@ -75,3 +77,5 @@ CONFIGURE_FILE(
   IMMEDIATE @ONLY)
 ADD_CUSTOM_TARGET(uninstall
   "${CMAKE_COMMAND}" -P "${CMAKE_CURRENT_BINARY_DIR}/CMakeModules/cmake_uninstall.cmake")
+
+target_include_directories(sdsl PUBLIC include)

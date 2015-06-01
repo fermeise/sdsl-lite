@@ -1,6 +1,8 @@
 SDSL - Succinct Data Structure Library
 =========
 
+[![Build Status](https://webapi.biicode.com/v1/badges/fenix/fenix/sdsl-lite/master)](https://www.biicode.com/fenix/sdsl-lite)
+
 What is it?
 -----------
 
@@ -237,6 +239,7 @@ Authors
 
 The main contributors to the library are:
 
+* [Johannes Bader] (https://github.com/olydis)
 * [Timo Beller](https://github.com/tb38)
 * [Simon Gog](https://github.com/simongog) (Creator)
 * [Matthias Petri](https://github.com/mpetri)
@@ -249,11 +252,13 @@ implementation ([hyb_vector][HB]).
 This project further profited from excellent input of our students
 Markus Brenner, Alexander Diehm, and Maike Zwerger. Stefan
 Arnold helped us with tricky template questions. We are also grateful to
+[Diego Caro](https://github.com/diegocaro),
 [Travis Gagie](https://github.com/TravisGagie),
 Kalle Karhu,
 [Bruce Kuo](https://github.com/bruce3557),
 Jan Kurrus,
 [Shanika Kuruppu](https://github.com/skuruppu),
+Jouni Siren,
 and [Julio Vizcaino](https://github.com/garviz) 
 for bug reports.
 
