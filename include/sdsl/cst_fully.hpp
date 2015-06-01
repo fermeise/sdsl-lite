@@ -5,7 +5,6 @@
 #include "bit_vectors.hpp"
 #include "vectors.hpp"
 #include "bp_support.hpp"
-#include "csa_iterators.hpp"
 #include <fstream>
 
 namespace sdsl {
@@ -765,17 +764,19 @@ cst_fully<t_csa, t_delta, t_s_support, t_b, t_depth, t_sample_leaves>::cst_fully
     // 2a. Scan and mark leaves to be sampled
     if(t_sample_leaves) {
         auto event = memory_monitor::event("scan-leaves");
-        for(auto it = csa_iterator<csa_type>::begin(cst.csa); it != csa_iterator<csa_type>::end(cst.csa); ++it) {
-            const size_type d = it.depth();
+        size_type leaf_idx = 0;
+        for(size_type i = 0; i < cst.size(); i++) {
+            const size_type d = i + 1;
             if(d + delta_half <= cst.size() and
                d % delta_half == 0) {
-                const auto node = cst.select_leaf(*it + 1);
+                const auto node = cst.select_leaf(leaf_idx + 1);
                 const size_type id = cst.id(node);
                 if(!is_sampled[id]) {
                     is_sampled[id] = true;
                     sample_count++;
                 }
             }
+            leaf_idx = cst.csa.lf[leaf_idx];
         }
     }
 
