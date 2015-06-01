@@ -1,14 +1,53 @@
-
+/*! \file cst_fully.hpp
+    \brief cst_fully.hpp contains an implementation of Russo et al.'s Fully-Compressed Suffix Tree.
+    \author Christian Ocker
+*/
 #ifndef INCLUDED_SDSL_CST_FULLY
 #define INCLUDED_SDSL_CST_FULLY
 
 #include "bit_vectors.hpp"
-#include "vectors.hpp"
 #include "bp_support.hpp"
-#include <fstream>
+#include "cst_iterators.hpp"
+#include "suffix_arrays.hpp"
+#include "suffix_trees.hpp"
+#include "util.hpp"
+#include "vectors.hpp"
 
 namespace sdsl {
 
+//! A class for the Fully-Compressed Suffix Tree (FCST) proposed by Russo et al.
+/*!
+ * \tparam t_csa        Type of a CSA (member of this type is accessible via
+ *                      member `csa`, default class is sdsl::wt).
+ * \tparam t_delta      Value of the sampling parameter. Larger values result
+ *                      in lower space consumption while requiring more time.
+ *                      For `t_delta` = 0, delta = log n log log n is used.
+ * \tparam t_s_support  Type of a BPS structure (member accessible via member
+ *                      `s_support`, default class is sdsl::bp_support_sada),
+ * \tparam t_b          Type of a bit vector for the leaf mapping (member
+ *                      accessible via member `b`, default class is
+ *                      sdsl::sd_vector),
+ * \tparam t_depth      Type of an integer vector for the depth of the sampled
+ *                      nodes (member accessible via member `depth_sampling`,
+ *                      default class is sdsl::dac_vector),
+ * \tparam t_sample_leaves Boolean value indicating whether leaves are to be
+ *                         sampled. This is helpful for debugging purposes.
+ *
+ * It also contains a sdsl::bit_vector which represents the balanced
+ * parentheses sequence of the sampled tree. This bit_vector can be accessed
+ * via member `s`.
+ *
+ * A node `v` of the `cst_fully` is represented by an integer `i` which
+ * corresponds to the position of the opening parenthesis of the parentheses
+ * pair \f$(i,\mu(i))\f$ that corresponds to `v` in `s`.
+ *
+ * \par Reference
+ *  Russo, Lu{\'\i}s and Navarro, Gonzalo and Oliveira, Arlindo L:
+ *  Fully Compressed Suffix Trees.
+ *  ACM Transactions on Algorithms (TALG), vol. 7, no. 4, p. 53, 2011
+ *
+ * @ingroup cst
+ */
 template<class t_csa = csa_wt<>,
          uint32_t t_delta = 0,
          class t_s_support = bp_support_sada<>,
@@ -22,7 +61,7 @@ public:
     typedef typename t_csa::size_type                 size_type;
     typedef t_csa                                     csa_type;
     typedef typename t_csa::char_type                 char_type;
-    typedef std::pair<size_type, size_type>           node_type; // Nodes are represented by their left and right leafs (inclusive)
+    typedef std::pair<size_type, size_type>           node_type; // Nodes are represented by their interval over the CSA
     typedef size_type                                 leaf_type; // Index of a leaf
     typedef size_type                                 sampled_node_type; // Node in the sampled tree represented by its index in s
     typedef t_s_support                               s_support_type;
@@ -464,6 +503,15 @@ public:
         return ancestor(right_parent, left_parent) ? left_parent : right_parent;
     }
 
+//! Get the child w of node v which edge label (v,w) starts with character c.
+        /*!
+         * \param v A node v.
+         * \param c First character of the edge label from v to the desired child.
+         * \return The child node w which edge label (v,w) starts with c or root() if it does not exist.
+         * \par Time complexity
+         *       \f$ \Order{ \log m \cdot (\saaccess+\isaaccess) } \f$
+                 where \f$ m \f$ is the number of leaves in the subtree rooted at node v.
+         */
     node_type child(node_type v, char_type c) const {
         if(is_leaf(v)) {
             return root();
@@ -474,15 +522,6 @@ public:
         return child(v, c, d);
     }
 
-//! Get the child w of node v which edge label (v,w) starts with character c.
-        /*!
-         * \param v A node v.
-         * \param c First character of the edge label from v to the desired child.
-         * \return The child node w which edge label (v,w) starts with c or root() if it does not exist.
-         * \par Time complexity
-         *       \f$ \Order{ \log m \cdot (\saaccess+\isaaccess) } \f$
-                 where \f$ m \f$ is the number of leaves in the subtree rooted at node v.
-         */
     node_type child(node_type v, char_type c, size_type d) const {
         leaf_type lower;
         leaf_type upper;
@@ -528,155 +567,6 @@ public:
         }
 
         return node_type(lower, upper - 1);
-    }
-
-//! Get the child w of node v which edge label (v,w) starts with character c.
-        /*!
-         * \param v A node v.
-         * \param c First character of the edge label from v to the desired child.
-         * \return The child node w which edge label (v,w) starts with c or root() if it does not exist.
-         * \par Time complexity
-         *       \f$ \Order{ \saaccess + \theta \cdot t_{rank\_bwt} + \log m + log \theta \cdot (\saaccess+\isaaccess) } \f$,
-                 where \f$ \theta \f$ is the SA and ISA sampling factor and \f$ m \f$ is the number of leaves under node v.
-         */
-    node_type child_3(node_type v, char_type c, size_type d) const {
-        // Assert that SA order SA sampling and text oder ISA sampling
-        // with the same sampling factor is used.
-
-        if(v == root()) {
-            leaf_type& l = v.first;
-            leaf_type& r = v.second;
-            backward_search(m_csa, l, r, c, l, r);
-            return v;
-        }
-
-        const size_type theta = std::min(d + 1, static_cast<size_type>(csa_type::sa_sample_dens));
-
-        std::vector<char_type> label(theta, 0);
-
-        leaf_type l = m_csa.isa[m_csa[v.first] + d - 1];
-        for(size_type i = 0; i < theta; i++) {
-            label[theta - i - 1] = m_csa.F[l];
-            l = m_csa.lf[l];
-        }
-
-        l = 0;
-        leaf_type r = size() - 1;
-
-        std::vector<node_type> D(theta, root());
-
-        backward_search(m_csa, l, r, c, l, r);
-        D[0] = node_type(l, r);
-        for(size_type i = 1; i < theta; i++) {
-            backward_search(m_csa, l, r, label[theta - i], l, r);
-            D[i] = node_type(l, r);
-        }
-
-        if(d < theta) {
-            std::tie(l, r) = D[d];
-            if(l > r) {
-                return root();
-            } else {
-                return node_type(l, r);
-            }
-        }
-
-        leaf_type res_lb;
-        leaf_type res_rb;
-
-        {
-            leaf_type left = v.first;
-            leaf_type right = v.second;
-
-            while(true) {
-                size_type ls = (left + theta - 1) / theta;
-                size_type rs = right / theta;
-
-                if(ls >= rs) {
-                    break;
-                }
-                size_type sample_pos = (ls + rs) / 2;
-                size_type text_pos = m_csa.sa_sample[sample_pos * theta];
-                size_type d2 = ((text_pos + d) / theta) * theta - text_pos;
-                leaf_type sample = m_csa.isa_sample[text_pos + d2];
-
-                if(sample >= D[d - d2].first) {
-                    if(sample <= D[d - d2].second) {
-                        right = sample_pos * theta;
-                    } else {
-                        right = sample_pos * theta - 1;
-                    }
-                } else {
-                    left = sample_pos * theta + 1;
-                }
-            }
-
-            while(left < right) {
-                leaf_type sample_pos = (left + right) / 2;
-                leaf_type sample = m_csa.isa[m_csa[sample_pos] + d];
-                if(sample >= D[0].first) {
-                    if(sample <= D[0].second) {
-                        right = sample_pos;
-                    } else {
-                        right = sample_pos - 1;
-                    }
-                } else {
-                    left = sample_pos + 1;
-                }
-            }
-
-            if(m_csa.text[m_csa[left] + d] != c) {
-                return root();
-            }
-
-            res_lb = left;
-        }
-
-        {
-            leaf_type left = v.first;
-            leaf_type right = v.second;
-
-            while(true) {
-                size_type ls = (left + theta - 1) / theta;
-                size_type rs = right / theta;
-
-                if(ls >= rs) {
-                    break;
-                }
-                size_type sample_pos = (ls + rs + 1) / 2;
-                size_type text_pos = m_csa.sa_sample[sample_pos * theta];
-                size_type d2 = ((text_pos + d) / theta) * theta - text_pos;
-                leaf_type sample = m_csa.isa_sample[text_pos + d2];
-
-                if(sample >= D[d - d2].first) {
-                    if(sample <= D[d - d2].second) {
-                        left = sample_pos * theta;
-                    } else {
-                        right = sample_pos * theta - 1;
-                    }
-                } else {
-                    left = sample_pos * theta + 1;
-                }
-            }
-
-            while(left < right) {
-                leaf_type sample_pos = (left + right + 1) / 2;
-                leaf_type sample = m_csa.isa[m_csa[sample_pos] + d];
-                if(sample >= D[0].first) {
-                    if(sample <= D[0].second) {
-                        left = sample_pos;
-                    } else {
-                        right = sample_pos - 1;
-                    }
-                } else {
-                    left = sample_pos + 1;
-                }
-            }
-
-            res_rb = left;
-        }
-
-        return node_type(res_lb, res_rb);
     }
 
 //! Get the i-th child of a node v.
