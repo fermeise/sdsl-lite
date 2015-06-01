@@ -780,7 +780,7 @@ cst_fully<t_csa, t_delta, t_s_support, t_b, t_depth, t_sample_leaves>::cst_fully
         }
     }
 
-    // 2b. Scan an mark inner nodes to be sampled
+    // 2b. Scan and mark inner nodes to be sampled
     {
         auto event = memory_monitor::event("scan-nodes");
         for(auto it = cst.begin(); it != cst.end(); ++it) {
@@ -799,11 +799,10 @@ cst_fully<t_csa, t_delta, t_s_support, t_b, t_depth, t_sample_leaves>::cst_fully
         }
     }
 
-    bit_vector tmp_b;
-    int_vector<64> tmp_depth;
-
     m_s.resize(2 * sample_count);
-    tmp_b.resize(2 * sample_count + cst.size());
+    util::set_to_value(m_s, 0);
+    bit_vector tmp_b(2 * sample_count + cst.size(), 0);
+    int_vector<64> tmp_depth;
     tmp_depth.resize(sample_count);
 
     // 3. Create sampled tree data structures
@@ -822,10 +821,10 @@ cst_fully<t_csa, t_delta, t_s_support, t_b, t_depth, t_sample_leaves>::cst_fully
                 tmp_depth[sample_idx++] = cst.depth(node) / delta_half;
             }
             if(cst.is_leaf(node)) {
-                tmp_b[b_idx++] = 0;
+                b_idx++;
             }
             if((cst.is_leaf(node) || it.visit() == 2) && is_sampled[cst.id(node)]) {
-                m_s[s_idx++] = 0;
+                s_idx++;
                 tmp_b[b_idx++] = 1;
             }
         }
